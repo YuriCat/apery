@@ -1283,7 +1283,7 @@ void genPolicyTeacher(Searcher *const psearcher,
             }
             
             // 出力データ作成
-            if(move.isCapture()){ // 駒打ち
+            if(move.isDrop()){ // 駒打ち
                 image.from = 11 * 11 + move.pieceTypeFrom() - Pawn;
             }else{
                 image.from = (int)makeFile(move.from()) * 11 + (int)makeRank(move.from()) + 1;
