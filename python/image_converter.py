@@ -46,7 +46,7 @@ def convert_board(file_path, size):
         for x in xrange(IMAGE_ROWS):
             for y in xrange(IMAGE_COLS):
                 binary_str = v[3 + x * IMAGE_COLS + y]
-                for p in xrange(IMAGE_INPUT_PLAINS):
+                for p in xrange(IMAGE_INPUT_INPUT_PLAINS):
                     # bitsetを逆順にする
                     images[i][x][y][IMAGE_INPUT_PLAINS - 1 - p] = int(binary_str[p])
     f.close()
