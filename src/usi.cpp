@@ -1283,8 +1283,12 @@ void genPolicyTeacher(Searcher *const psearcher,
             }
             
             // 出力データ作成
-            image.from = move.from();
-            image.to = move.to();
+            if(move.isCapture()){ // 駒打ち
+                image.from = 11 * 11 + move.pieceTypeFrom() - Pawn;
+            }else{
+                image.from = (int)makeFile(move.from()) * 11 + (int)makeRank(move.from()) + 1;
+            }
+            image.to = (int)makeFile(move.to()) * 11 + (int)makeRank(move.to()) + 1;
             image.promote = move.isPromotion() ? 1 : 0;
             
             images.push_back(image);
@@ -1292,7 +1296,7 @@ void genPolicyTeacher(Searcher *const psearcher,
         std::cerr << images.size() << std::endl;
     }
     
-    // データ順をシャッフル
+    // データをシャッフル
     std::mt19937 mt((unsigned int)time(NULL));
     std::shuffle(images.begin(), images.end(), mt);
     
@@ -1303,7 +1307,9 @@ void genPolicyTeacher(Searcher *const psearcher,
         std::ostringstream oss;
         oss << opath << fileIndex << ".dat";
         std::ofstream ofs;
-        ofs.open(oss.str(), std::ios::out);
+        const std::string fileName = oss.str();
+        std::cerr << fileName << std::endl;
+        ofs.open(fileName, std::ios::out);
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int i = fileIndex * batchSize + dataIndex;
             ofs << images[i] << std::endl;
