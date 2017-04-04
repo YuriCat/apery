@@ -1117,3 +1117,215 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
 
     threads.main()->waitForSearchFinished();
 }
+
+// 以下NN学習データ作成用
+#include <bitset>
+
+struct BoardImage{
+    // NNへのインプットデータ
+    std::bitset<103> board[11][11];
+    
+    // 0 盤内に1
+    // 1  ~ 14 先手の駒
+    // 15 ~ 28 後手の駒
+    // 29 ~ 64 先手持ち駒
+    // 65 ~ 102 後手持ち駒
+    
+    // 以降未実装
+    // 65 ~ 78 先手の駒の現実の効き
+    // 79 ~ 92 後手の駒の現実の効き
+    // 93 ~ 106 先手の駒の理想的な効き
+    // 107 ~ 120 後手の駒の理想的な効き
+    // 121 先手の成り
+    // 122 後手の成り
+    // 123 先手の歩のある筋
+    // 124 後手の歩のある筋
+    // 125 ~ 137 後手玉に対する先手の王手位置
+    // 138 ~ 150 先手玉に対する後手の王手位置
+    
+    void fill(int index){
+        for(int i = 0; i < 11; ++i){
+            for(int j = 0; j < 11; ++j){
+                board[i][j].set(index);
+            }
+        }
+    }
+    
+    // NNからのアウトプットデータ
+    int from, to;
+    int promote;
+};
+
+std::ostream& operator <<(std::ostream& ost, const BoardImage& bi){
+    ost << bi.from << ' ' << bi.to << ' ' << bi.promote;
+    for(int i = 0; i < 11; ++i){
+        for(int j = 0; j < 11; ++j){
+            ost << ' ' << bi.board[i][j];
+        }
+    }
+    return ost;
+}
+
+void genPolicyTeacher(Searcher *const psearcher,
+                      const std::string& ipath,
+                      const std::string& opath){
+    
+    std::cerr << "policy teacher generation" << std::endl;
+    
+    // 棋譜の読み込み
+    Position pos(psearcher);
+    Learner *plearner = new Learner();
+    
+    plearner->readBook(pos, ipath, "-", "-", "-", 0);
+    
+    // データをランダムに読んで教師データ作成
+    u64 positionSum = 0;
+    std::vector<u64> cumulativePositions;
+    for(auto& game : plearner->bookMovesDatum_){
+        positionSum += game.size();
+        cumulativePositions.push_back(game.size());
+    }
+    
+    std::cerr << "total positions = " << positionSum << std::endl;
+
+    std::vector<BoardImage> images;
+    images.reserve(positionSum);
+    
+    for(auto& game : plearner->bookMovesDatum_){
+        pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+                nullptr);
+        std::vector<StateInfo> siv;
+        for(auto& bm : game){
+            siv.push_back(StateInfo());
+            Move move = bm.move;
+            pos.doMove(move, siv.back());
+            //std::cerr << pos.toSFEN() << std::endl;
+            
+            // 入力データ作成
+            BoardImage image;
+            
+            // 盤内
+            for(int i = 0; i < 9; ++i){
+                for(int j = 0; j < 9; ++j){
+                    image.board[i + 1][j + 1].set(0);
+                }
+            }
+            
+            // 盤内の駒
+            Color myColor = pos.turn();
+            for(int i = 0; i < 9; ++i){
+                for(int j = 0; j < 9; ++j){
+                    // 盤上の位置の計算
+                    // 試合開始時点での後手が手盤を持つ時には盤面を反転させる
+                    Square sq = (myColor == Black) ?
+                    makeSquare(File(i), Rank(j)) :
+                    makeSquare(File(8 - i), Rank(8 - j));
+                    Piece p = pos.piece(sq);
+                    if(p != Empty){
+                        Color pc = pieceToColor(p);
+                        PieceType pt = pieceToPieceType(p);
+                        
+                        if(pc == myColor){ // 手番側
+                            image.board[i + 1][j + 1].set(pt - Pawn + 1);
+                        }else{
+                            image.board[i + 1][j + 1].set(pt - Pawn + 15);
+                        }
+                    }
+                }
+            }
+            
+            // 持ち駒
+            // 手番側
+            Hand myHand = pos.hand(myColor);
+            for(int i = 0; i < (int)myHand.numOf<HPawn>(); ++i){
+                image.fill(29);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HLance>(); ++i){
+                image.fill(29 + 18);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HKnight>(); ++i){
+                image.fill(29 + 18 + 4);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HSilver>(); ++i){
+                image.fill(29 + 18 + 4 + 4);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HGold>(); ++i){
+                image.fill(29 + 18 + 4 + 4 + 4);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HBishop>(); ++i){
+                image.fill(29 + 18 + 4 + 4 + 4 + 4);
+            }
+            for(int i = 0; i < (int)myHand.numOf<HRook>(); ++i){
+                image.fill(29 + 18 + 4 + 4 + 4 + 4 + 2);
+            }
+            // 相手側
+            Hand oppHand = pos.hand(oppositeColor(myColor));
+            for(int i = 0; i < (int)oppHand.numOf<HPawn>(); ++i){
+                image.fill(65);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HLance>(); ++i){
+                image.fill(65 + 18);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HKnight>(); ++i){
+                image.fill(65 + 18 + 4);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HSilver>(); ++i){
+                image.fill(65 + 18 + 4 + 4);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HGold>(); ++i){
+                image.fill(65 + 18 + 4 + 4 + 4);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HBishop>(); ++i){
+                image.fill(65 + 18 + 4 + 4 + 4 + 4);
+            }
+            for(int i = 0; i < (int)oppHand.numOf<HRook>(); ++i){
+                image.fill(65 + 18 + 4 + 4 + 4 + 4 + 2);
+            }
+            
+            // 出力データ作成
+            image.from = move.from();
+            image.to = move.to();
+            image.promote = move.isPromotion() ? 1 : 0;
+            
+            images.push_back(image);
+        }
+        std::cerr << images.size() << std::endl;
+    }
+    
+    // データ順をシャッフル
+    std::mt19937 mt((unsigned int)time(NULL));
+    std::shuffle(images.begin(), images.end(), mt);
+    
+    // 保存
+    const int batchSize = 256;
+    const int fileNum = images.size() / batchSize;
+    for(int fileIndex = 0; fileIndex < fileNum; ++fileIndex){
+        std::ostringstream oss;
+        oss << opath << fileIndex << ".dat";
+        std::ofstream ofs;
+        ofs.open(oss.str(), std::ios::out);
+        for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
+            int i = fileIndex * batchSize + dataIndex;
+            ofs << images[i] << std::endl;
+        }
+        ofs.close();
+    }
+}
+
+int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
+    
+    std::string csaFilePath = "./2chkifu.csa", outputDir = "./";
+    
+    for(int c = 1; c < argc; ++c){
+        if(!strcmp(argv[c], "-l")){
+            csaFilePath = std::string(argv[c + 1]);
+        }else if(!strcmp(argv[c], "-o")){
+            outputDir = std::string(argv[c + 1]);
+        }
+    }
+    
+    genPolicyTeacher(psearcher, csaFilePath, outputDir);
+    
+    
+    return 0;
+}

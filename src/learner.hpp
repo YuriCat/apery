@@ -23,6 +23,8 @@
 #define APERY_LEARNER_HPP
 
 #include "position.hpp"
+#include "generateMoves.hpp"
+#include "search.hpp"
 #include "thread.hpp"
 #include "evaluate.hpp"
 
@@ -411,7 +413,7 @@ public:
             learnParse2(pos);
         }
     }
-private:
+//private: 自由に使うため
     // 学習に使う棋譜から、手と手に対する補助的な情報を付けでデータ保持する。
     // 50000局程度に対して10秒程度で終わるからシングルコアで良い。
     void setLearnMoves(Position& pos, std::set<std::pair<Key, Move> >& dict, std::string& s0, std::string& s1,

@@ -53,12 +53,23 @@ int main() {
 
 #else
 // 将棋を指すソフト
+int mptd_main(Searcher* psearcher, int argc, char *argv[]);
+
 int main(int argc, char* argv[]) {
     initTable();
     Position::initZobrist();
     HuffmanCodedPos::init();
-    auto s = std::unique_ptr<Searcher>(new Searcher);
+    //auto s = std::unique_ptr<Searcher>(new Searcher);
+    Searcher *s = new Searcher();
     s->init();
+    
+    for(int c = 1; c < argc; ++c){
+        if(!strcmp(argv[c], "-mptd")){
+            mptd_main(s, argc, argv);
+            return 0;
+        }
+    }
+    
     s->doUSICommandLoop(argc, argv);
     s->threads.exit();
 }
