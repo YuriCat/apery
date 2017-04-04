@@ -49,11 +49,12 @@ def convert_board(file_path, size):
                 for p in xrange(IMAGE_INPUT_PLAINS):
                     # bitsetを逆順にする
                     images[i][x][y][IMAGE_INPUT_PLAINS - 1 - p] = int(binary_str[p])
+    f.close()
     return images, moves
 
 def convert_to_np(ipath, opath, n):
     file_name = ipath + str(n) + ".dat"
-    images, moves = go.load_image_moves(file_name, BATCH)
+    images, moves = convert_board(file_name, BATCH)
     
     image_name = opath + "input" + str(n)
     move_name = opath + "move" + str(n)
