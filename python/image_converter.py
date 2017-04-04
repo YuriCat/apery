@@ -21,7 +21,7 @@ IMAGE_MOVE_CHANNELS = 10 # from 1, to 9
 def convert_board(file_path, size):
     # sizeの数が入った画像データを読む
     f = open(file_path)
-    images = np.empty((size, IMAGE_ROWS, IMAGE_COLS, IMAGE_PLAINS),
+    images = np.empty((size, IMAGE_ROWS, IMAGE_COLS, IMAGE_INPUT_PLAINS),
                       dtype = np.float32)
     moves = np.zeros((size, IMAGE_SIZE, IMAGE_MOVE_CHANNELS), dtype = np.float32)
     
