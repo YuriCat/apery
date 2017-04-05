@@ -1284,7 +1284,7 @@ void genPolicyTeacher(Searcher *const psearcher,
             
             // 出力データ作成
             if(move.isDrop()){ // 駒打ち
-                image.from = 11 * 11 + move.pieceTypeFrom() - Pawn;
+                image.from = 11 * 11 + move.pieceTypeDropped() - Pawn;
             }else{
                 image.from = (int)makeFile(move.from()) * 11 + (int)makeRank(move.from()) + 1;
             }
@@ -1297,7 +1297,8 @@ void genPolicyTeacher(Searcher *const psearcher,
     }
     
     // データをシャッフル
-    std::mt19937 mt((unsigned int)time(NULL));
+    const u32 seed = 103;//(unsigned int)time(NULL);
+    std::mt19937 mt(seed);
     std::shuffle(images.begin(), images.end(), mt);
     
     // 保存
