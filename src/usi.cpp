@@ -1286,9 +1286,23 @@ void genPolicyTeacher(Searcher *const psearcher,
             if(move.isDrop()){ // 駒打ち
                 image.from = 11 * 11 + move.pieceTypeDropped() - Pawn;
             }else{
-                image.from = (int)makeFile(move.from()) * 11 + (int)makeRank(move.from()) + 1;
+                File f = makeFile(move.from());
+                Rank r = makeRank(move.from());
+                if(myColor != Black){
+                    f = File1 + File9 - f;
+                    r = Rank1 + Rank9 - r;
+                }
+                image.from = ((int)f + 1) * 11 + (int)r + 1;
             }
-            image.to = (int)makeFile(move.to()) * 11 + (int)makeRank(move.to()) + 1;
+            
+            File f = makeFile(move.to());
+            Rank r = makeRank(move.to());
+            if(myColor != Black){
+                f = File1 + File9 - f;
+                r = Rank1 + Rank9 - r;
+            }
+            image.to = ((int)f + 1) * 11 + (int)r + 1;
+            
             image.promote = move.isPromotion() ? 1 : 0;
             
             images.push_back(image);
