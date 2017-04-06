@@ -1182,11 +1182,11 @@ std::ostream& operator <<(std::ostream& ost, const BoardImage& bi){
 }
 
 void imageSaverThread(const int threadIndex, const int threads,
-                      const std::vector<BoardImage>& images,
+                      const std::vector<BoardImage> *const pimages,
                       const std::string& opath){
     
     constexpr int batchSize = 256;
-    const int fileNum = images.size() / batchSize;
+    const int fileNum = pimages->size() / batchSize;
     
     // 学習データ保存をスレッドで分担して行う
     // .npz形式での保存
@@ -1205,7 +1205,7 @@ void imageSaverThread(const int threadIndex, const int threads,
             for(int i = 0; i < 11; ++i){
                 for(int j = 0; j < 11; ++j){
                     for(int p = 0; p < BoardImage::plains; ++p){
-                        (*pinputArray)[cnt++] = images[index].board[i][j][p];
+                        (*pinputArray)[cnt++] = (*pimages)[index].board[i][j][p];
                     }
                 }
             }
@@ -1216,9 +1216,9 @@ void imageSaverThread(const int threadIndex, const int threads,
         cnt = 0;
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int index = fileIndex * batchSize + dataIndex;
-            const int from = images[index].from;
-            const int to = images[index].to;
-            const int promote = images[index].promote;
+            const int from = (*pimages)[index].from;
+            const int to = (*pimages)[index].to;
+            const int promote = (*pimages)[index].promote;
             if(from >= 121){ // 駒打ち
                 (*pmoveArray)[cnt + to * 10 + 3 + (from - 121)] = 1;
             }else{
@@ -1455,7 +1455,7 @@ void genPolicyTeacher(Searcher *const psearcher,
     
     std::vector<std::thread> savers;
     for(int th = 0; th < threads; ++th){
-        savers.push_back(std::thread(&imageSaverThread, th, threads, images, opath));
+        savers.push_back(std::thread(&imageSaverThread, th, threads, &images, opath));
     }
     for(auto& saver : savers){
         saver.join();
