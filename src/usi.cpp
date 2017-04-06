@@ -1181,9 +1181,68 @@ std::ostream& operator <<(std::ostream& ost, const BoardImage& bi){
     return ost;
 }
 
+void imageSaverThread(const int threadIndex,
+                      const std::vector<BoardImage>& images,
+                      const std::string& opath){
+    
+    constexpr int batchSize = 256;
+    const int fileNum = images.size() / batchSize;
+    
+    // 学習データ保存をスレッドで分担して行う
+    // .npz形式での保存
+    auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
+    auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
+    const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
+    
+    for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threadIndex){
+        int cnt;
+        // input
+        const std::string inputFileName = opath + "input" + std::to_string(fileIndex) + ".npz";
+        cnt = 0;
+        for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
+            int index = fileIndex * batchSize + dataIndex;
+            for(int i = 0; i < 11; ++i){
+                for(int j = 0; j < 11; ++j){
+                    for(int p = 0; p < BoardImage::plains; ++p){
+                        (*pinputArray)[cnt++] = images[index].board[i][j][p];
+                    }
+                }
+            }
+        }
+        // move
+        const std::string moveFileName = opath + "move" + std::to_string(fileIndex) + ".npz";
+        pmoveArray->fill(0);
+        cnt = 0;
+        for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
+            int index = fileIndex * batchSize + dataIndex;
+            const int from = images[index].from;
+            const int to = images[index].to;
+            const int promote = images[index].promote;
+            if(from >= 121){ // 駒打ち
+                (*pmoveArray)[cnt + to * 10 + 3 + (from - 121)] = 1;
+            }else{
+                (*pmoveArray)[cnt + from * 10 + 0] = 1;
+                (*pmoveArray)[cnt + to * 10 + 1 + promote] = 1;
+            }
+            cnt += 11 * 11 * 10;
+        }
+        std::cerr << inputFileName << std::endl;
+        cnpy::npz_save(inputFileName, "arr_0",
+                       pinputArray->data(), inputShape.data(), inputShape.size(), "w");
+        std::cerr << moveFileName << std::endl;
+        cnpy::npz_save(moveFileName, "arr_0",
+                       pmoveArray->data(), moveShape.data(), moveShape.size(), "w");
+    }
+    
+    delete pinputArray;
+    delete pmoveArray;
+}
+
 void genPolicyTeacher(Searcher *const psearcher,
                       const std::string& ipath,
-                      const std::string& opath){
+                      const std::string& opath,
+                      const int threads){
     
     std::cerr << "policy teacher generation" << std::endl;
     
@@ -1325,8 +1384,8 @@ void genPolicyTeacher(Searcher *const psearcher,
     std::shuffle(images.begin(), images.end(), mt);
     
     // 保存
-    constexpr int batchSize = 256;
-    const int fileNum = images.size() / batchSize;
+    
+    /*
     for(int fileIndex = 0; fileIndex < fileNum; ++fileIndex){
         std::ostringstream oss;
         oss << opath << fileIndex << ".dat";
@@ -1339,10 +1398,10 @@ void genPolicyTeacher(Searcher *const psearcher,
             ofs << images[i] << std::endl;
         }
         ofs.close();
-    }
+    }*/
     
     // .npz形式での保存
-    auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
+    /*auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
     auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
     const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
@@ -1388,22 +1447,33 @@ void genPolicyTeacher(Searcher *const psearcher,
     }
     
     delete pinputArray;
-    delete pmoveArray;
+    delete pmoveArray;*/
+    
+    std::vector<std::thread> savers;
+    for(int th = 0; th < threads; ++th){
+        savers.push_back(std::thread(&imageSaverThread, th, images, opath));
+    }
+    for(auto& saver : savers){
+        saver.join();
+    }
 }
 
 int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     
     std::string csaFilePath = "./2chkifu.csa", outputDir = "./";
+    int threads = 1;
     
     for(int c = 1; c < argc; ++c){
         if(!strcmp(argv[c], "-l")){
             csaFilePath = std::string(argv[c + 1]);
         }else if(!strcmp(argv[c], "-o")){
             outputDir = std::string(argv[c + 1]);
+        }else if(!strcmp(argv[c], "-th")){
+            threads = atoi(argv[c + 1]);
         }
     }
     
-    genPolicyTeacher(psearcher, csaFilePath, outputDir);
+    genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
     
     
     return 0;
