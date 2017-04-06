@@ -1193,7 +1193,7 @@ void imageSaverThread(const int threadIndex, const int threads,
     auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
     auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
-    const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
+    const std::vector<unsigned int> moveShape = {batchSize, 11 * 11, 10};
     
     for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threads){
         int cnt;
