@@ -1181,7 +1181,7 @@ std::ostream& operator <<(std::ostream& ost, const BoardImage& bi){
     return ost;
 }
 
-void imageSaverThread(const int threadIndex,
+void imageSaverThread(const int threadIndex, const int threads,
                       const std::vector<BoardImage>& images,
                       const std::string& opath){
     
@@ -1195,7 +1195,7 @@ void imageSaverThread(const int threadIndex,
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
     const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
     
-    for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threadIndex){
+    for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threads){
         int cnt;
         // input
         const std::string inputFileName = opath + "input" + std::to_string(fileIndex) + ".npz";
@@ -1245,6 +1245,10 @@ void genPolicyTeacher(Searcher *const psearcher,
                       const int threads){
     
     std::cerr << "policy teacher generation" << std::endl;
+    
+    std::cerr << "input path : " << ipath << std::endl;
+    std::cerr << "output path : " << opath << std::endl;
+    std::cerr << "threads = " << threads << std::endl;
     
     // 棋譜の読み込み
     Position pos(psearcher);
@@ -1451,7 +1455,7 @@ void genPolicyTeacher(Searcher *const psearcher,
     
     std::vector<std::thread> savers;
     for(int th = 0; th < threads; ++th){
-        savers.push_back(std::thread(&imageSaverThread, th, images, opath));
+        savers.push_back(std::thread(&imageSaverThread, th, threads, images, opath));
     }
     for(auto& saver : savers){
         saver.join();
