@@ -1123,13 +1123,13 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
 
 struct BoardImage{
     // NNへのインプットデータ
-    std::bitset<103> board[11][11];
+    std::bitset<107> board[11][11];
     
     // 0 盤内に1
     // 1  ~ 14 先手の駒
     // 15 ~ 28 後手の駒
-    // 29 ~ 64 先手持ち駒
-    // 65 ~ 102 後手持ち駒
+    // 29 ~ 66 先手持ち駒
+    // 67 ~ 106 後手持ち駒
     
     // 以降未実装
     // 65 ~ 78 先手の駒の現実の効き
@@ -1142,6 +1142,17 @@ struct BoardImage{
     // 124 後手の歩のある筋
     // 125 ~ 137 後手玉に対する先手の王手位置
     // 138 ~ 150 先手玉に対する後手の王手位置
+    
+    void clear(){
+        for(int i = 0; i < 11; ++i){
+            for(int j = 0; j < 11; ++j){
+                board[i][j].reset();
+            }
+        }
+        from = -1;
+        to = -1;
+        promote = -1;
+    }
     
     void fill(int index){
         for(int i = 0; i < 11; ++i){
@@ -1204,6 +1215,8 @@ void genPolicyTeacher(Searcher *const psearcher,
             // 入力データ作成
             BoardImage image;
             
+            image.clear();
+            
             // 盤内
             for(int i = 0; i < 9; ++i){
                 for(int j = 0; j < 9; ++j){
@@ -1217,9 +1230,7 @@ void genPolicyTeacher(Searcher *const psearcher,
                 for(int j = 0; j < 9; ++j){
                     // 盤上の位置の計算
                     // 試合開始時点での後手が手盤を持つ時には盤面を反転させる
-                    Square sq = (myColor == Black) ?
-                    makeSquare(File(i), Rank(j)) :
-                    makeSquare(File(8 - i), Rank(8 - j));
+                    Square sq = inverseIfWhite(myColor, makeSquare(File(i), Rank(j)));
                     Piece p = pos.piece(sq);
                     if(p != Empty){
                         Color pc = pieceToColor(p);
@@ -1238,69 +1249,63 @@ void genPolicyTeacher(Searcher *const psearcher,
             // 手番側
             Hand myHand = pos.hand(myColor);
             for(int i = 0; i < (int)myHand.numOf<HPawn>(); ++i){
-                image.fill(29);
+                image.fill(29 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HLance>(); ++i){
-                image.fill(29 + 18);
+                image.fill(29 + 18 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HKnight>(); ++i){
-                image.fill(29 + 18 + 4);
+                image.fill(29 + 18 + 4 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HSilver>(); ++i){
-                image.fill(29 + 18 + 4 + 4);
+                image.fill(29 + 18 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HGold>(); ++i){
-                image.fill(29 + 18 + 4 + 4 + 4);
+                image.fill(29 + 18 + 4 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HBishop>(); ++i){
-                image.fill(29 + 18 + 4 + 4 + 4 + 4);
+                image.fill(29 + 18 + 4 + 4 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)myHand.numOf<HRook>(); ++i){
-                image.fill(29 + 18 + 4 + 4 + 4 + 4 + 2);
+                image.fill(29 + 18 + 4 + 4 + 4 + 4 + 2 + i);
             }
             // 相手側
             Hand oppHand = pos.hand(oppositeColor(myColor));
             for(int i = 0; i < (int)oppHand.numOf<HPawn>(); ++i){
-                image.fill(65);
+                image.fill(67 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HLance>(); ++i){
-                image.fill(65 + 18);
+                image.fill(67 + 18 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HKnight>(); ++i){
-                image.fill(65 + 18 + 4);
+                image.fill(67 + 18 + 4 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HSilver>(); ++i){
-                image.fill(65 + 18 + 4 + 4);
+                image.fill(67 + 18 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HGold>(); ++i){
-                image.fill(65 + 18 + 4 + 4 + 4);
+                image.fill(67 + 18 + 4 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HBishop>(); ++i){
-                image.fill(65 + 18 + 4 + 4 + 4 + 4);
+                image.fill(67 + 18 + 4 + 4 + 4 + 4 + i);
             }
             for(int i = 0; i < (int)oppHand.numOf<HRook>(); ++i){
-                image.fill(65 + 18 + 4 + 4 + 4 + 4 + 2);
+                image.fill(67 + 18 + 4 + 4 + 4 + 4 + 2 + i);
             }
             
             // 出力データ作成
             if(move.isDrop()){ // 駒打ち
                 image.from = 11 * 11 + move.pieceTypeDropped() - Pawn;
             }else{
-                File f = makeFile(move.from());
-                Rank r = makeRank(move.from());
-                if(myColor != Black){
-                    f = File1 + File9 - f;
-                    r = Rank1 + Rank9 - r;
-                }
+                Square sq = inverseIfWhite(myColor, move.from());
+                File f = makeFile(sq);
+                Rank r = makeRank(sq);
                 image.from = ((int)f + 1) * 11 + (int)r + 1;
             }
             
-            File f = makeFile(move.to());
-            Rank r = makeRank(move.to());
-            if(myColor != Black){
-                f = File1 + File9 - f;
-                r = Rank1 + Rank9 - r;
-            }
+            Square sq = inverseIfWhite(myColor, move.to());
+            File f = makeFile(sq);
+            Rank r = makeRank(sq);
             image.to = ((int)f + 1) * 11 + (int)r + 1;
             
             image.promote = move.isPromotion() ? 1 : 0;
