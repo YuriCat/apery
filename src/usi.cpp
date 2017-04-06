@@ -1342,8 +1342,8 @@ void genPolicyTeacher(Searcher *const psearcher,
     }
     
     // .npz形式での保存
-    std::array<float, batchSize * 11 * 11 * BoardImage::plains> inputArray;
-    std::array<float, batchSize * 11 * 11 * 10> moveArray;
+    auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
+    auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
     const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
     
@@ -1357,14 +1357,14 @@ void genPolicyTeacher(Searcher *const psearcher,
             for(int i = 0; i < 11; ++i){
                 for(int j = 0; j < 11; ++j){
                     for(int p = 0; p < BoardImage::plains; ++p){
-                        inputArray[cnt++] = images[index].board[i][j][p];
+                        (*pinputArray)[cnt++] = images[index].board[i][j][p];
                     }
                 }
             }
         }
         // move
         const std::string moveFileName = opath + "move" + std::to_string(fileIndex) + ".npz";
-        moveArray.fill(0);
+        pmoveArray->fill(0);
         cnt = 0;
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int index = fileIndex * batchSize + dataIndex;
@@ -1372,20 +1372,23 @@ void genPolicyTeacher(Searcher *const psearcher,
             const int to = images[index].to;
             const int promote = images[index].promote;
             if(from >= 121){ // 駒打ち
-                moveArray[cnt + to * 10 + 3 + (from - 121)] = 1;
+                (*pmoveArray)[cnt + to * 10 + 3 + (from - 121)] = 1;
             }else{
-                moveArray[cnt + from * 10 + 0] = 1;
-                moveArray[cnt + to * 10 + 1 + promote] = 1;
+                (*pmoveArray)[cnt + from * 10 + 0] = 1;
+                (*pmoveArray)[cnt + to * 10 + 1 + promote] = 1;
             }
             cnt += 11 * 11 * 10;
         }
         std::cerr << inputFileName << std::endl;
         cnpy::npz_save(inputFileName, "arr_0",
-                       inputArray.data(), inputShape.data(), inputShape.size(), "w");
+                       pinputArray->data(), inputShape.data(), inputShape.size(), "w");
         std::cerr << moveFileName << std::endl;
         cnpy::npz_save(moveFileName, "arr_0",
-                       moveArray.data(), moveShape.data(), moveShape.size(), "w");
+                       pmoveArray->data(), moveShape.data(), moveShape.size(), "w");
     }
+    
+    delete pinputArray;
+    delete pmoveArray;
 }
 
 int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
