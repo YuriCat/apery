@@ -1121,9 +1121,13 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
 // 以下NN学習データ作成用
 #include <bitset>
 
+#include "cnpy.h"
+
 struct BoardImage{
     // NNへのインプットデータ
-    std::bitset<107> board[11][11];
+    static constexpr int plains = 107;
+    
+    std::bitset<plains> board[11][11];
     
     // 0 盤内に1
     // 1  ~ 14 先手の駒
@@ -1321,7 +1325,7 @@ void genPolicyTeacher(Searcher *const psearcher,
     std::shuffle(images.begin(), images.end(), mt);
     
     // 保存
-    const int batchSize = 256;
+    constexpr int batchSize = 256;
     const int fileNum = images.size() / batchSize;
     for(int fileIndex = 0; fileIndex < fileNum; ++fileIndex){
         std::ostringstream oss;
@@ -1335,6 +1339,52 @@ void genPolicyTeacher(Searcher *const psearcher,
             ofs << images[i] << std::endl;
         }
         ofs.close();
+    }
+    
+    // .npz形式での保存
+    std::array<float, batchSize * 11 * 11 * BoardImage::plains> inputArray;
+    std::array<float, batchSize * 11 * 11 * 10> moveArray;
+    const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
+    const std::vector<unsigned int> moveShape = {batchSize, 11, 11, 10};
+    
+    for(int fileIndex = 0; fileIndex < fileNum; ++fileIndex){
+        int cnt;
+        // input
+        const std::string inputFileName = opath + "input" + std::to_string(fileIndex) + ".npz";
+        cnt = 0;
+        for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
+            int index = fileIndex * batchSize + dataIndex;
+            for(int i = 0; i < 11; ++i){
+                for(int j = 0; j < 11; ++j){
+                    for(int p = 0; p < BoardImage::plains; ++p){
+                        inputArray[cnt++] = images[index].board[i][j][p];
+                    }
+                }
+            }
+        }
+        // move
+        const std::string moveFileName = opath + "move" + std::to_string(fileIndex) + ".npz";
+        moveArray.fill(0);
+        cnt = 0;
+        for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
+            int index = fileIndex * batchSize + dataIndex;
+            const int from = images[index].from;
+            const int to = images[index].to;
+            const int promote = images[index].promote;
+            if(from >= 121){ // 駒打ち
+                moveArray[cnt + to * 10 + 3 + (from - 121)] = 1;
+            }else{
+                moveArray[cnt + from * 10 + 0] = 1;
+                moveArray[cnt + to * 10 + 1 + promote] = 1;
+            }
+            cnt += 11 * 11 * 10;
+        }
+        std::cerr << inputFileName << std::endl;
+        cnpy::npz_save(inputFileName, "arr_0",
+                       inputArray.data(), inputShape.data(), inputShape.size(), "w");
+        std::cerr << moveFileName << std::endl;
+        cnpy::npz_save(moveFileName, "arr_0",
+                       moveArray.data(), moveShape.data(), moveShape.size(), "w");
     }
 }
 
