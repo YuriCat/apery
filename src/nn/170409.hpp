@@ -4,7 +4,7 @@
  */
 
 #include <bitset>
-#include "cnpy.h"
+#include "../cnpy.h"
 
 struct BoardImage{
     // NNへのインプットデータ
