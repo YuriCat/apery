@@ -74,11 +74,9 @@ void imageSaverThread(const int threadIndex, const int threads,
     // 学習データ保存をスレッドで分担して行う
     // .npz形式での保存
     auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
-    auto *const pfromArray = new std::array<float, batchSize * 11 * 11 * 10>();
-    auto *const ptoArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    auto *const pmoveArray = new std::array<float, batchSize * (11 * 11 + 7 + 11 * 11 * 2)>();
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
-    const std::vector<unsigned int> fromShape = {batchSize, 11 * 11 + 7};
-    const std::vector<unsigned int> toShape = {batchSize, 11 * 11 * 2};
+    const std::vector<unsigned int> moveShape = {batchSize, 11 * 11 + 7 + 11 * 11 * 2};
     
     for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threads){
         int cnt;
@@ -96,32 +94,25 @@ void imageSaverThread(const int threadIndex, const int threads,
             }
         }
         // from
-        pfromArray->fill(0);
-        ptoArray->fill(0);
-        int fcnt = 0;
-        int tcnt = 0;
+        pmoveArray->fill(0);
+        int mcnt = 0;
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int index = fileIndex * batchSize + dataIndex;
             const int from = (*pimages)[index].from;
             const int to = (*pimages)[index].to;
             const int promote = (*pimages)[index].promote;
-            (*pfromArray)[fcnt + from] = 1;
-            (*ptoArray)[tcnt + to * 2 + promote] = 1;
-            fcnt += 11 * 11 + 7;
-            tcnt += 11 * 11 * 2;
+            (*pmoveArray)[mcnt + from] = 1;
+            (*pmoveArray)[mcnt + 11 * 11 + 7 + to * 2 + promote] = 1;
         }
         std::cerr << fileName << std::endl;
         cnpy::npz_save(fileName, "input",
                        pinputArray->data(), inputShape.data(), inputShape.size(), "w");
-        cnpy::npz_save(fileName, "from",
-                       pfromArray->data(), fromShape.data(), fromShape.size(), "a");
-        cnpy::npz_save(fileName, "to",
-                       ptoArray->data(), toShape.data(), toShape.size(), "a");
+        cnpy::npz_save(fileName, "move",
+                       pmoveArray->data(), moveShape.data(), moveShape.size(), "a");
     }
     
     delete pinputArray;
-    delete pfromArray;
-    delete ptoArray;
+    delete pmoveArray;
 }
 
 void genPolicyTeacher(Searcher *const psearcher,
