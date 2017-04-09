@@ -74,9 +74,12 @@ void imageSaverThread(const int threadIndex, const int threads,
     // 学習データ保存をスレッドで分担して行う
     // .npz形式での保存
     auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
-    auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    auto *const pfromArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    auto *const ptoArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    auto *const ptoArray =
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
-    const std::vector<unsigned int> moveShape = {batchSize, 11 * 11, 10};
+    const std::vector<unsigned int> fromShape = {batchSize, 11 * 11 + 7};
+    const std::vector<unsigned int> toShape = {batchSize, 11 * 11 * 2};
     
     for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threads){
         int cnt;
@@ -93,31 +96,33 @@ void imageSaverThread(const int threadIndex, const int threads,
                 }
             }
         }
-        // move
-        pmoveArray->fill(0);
-        cnt = 0;
+        // from
+        pfromArray->fill(0);
+        ptoArray->fill(0);
+        int fcnt = 0;
+        int tcnt = 0;
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int index = fileIndex * batchSize + dataIndex;
             const int from = (*pimages)[index].from;
             const int to = (*pimages)[index].to;
             const int promote = (*pimages)[index].promote;
-            if(from >= 121){ // 駒打ち
-                (*pmoveArray)[cnt + to * 10 + 3 + (from - 121)] = 1;
-            }else{
-                (*pmoveArray)[cnt + from * 10 + 0] = 1;
-                (*pmoveArray)[cnt + to * 10 + 1 + promote] = 1;
-            }
-            cnt += 11 * 11 * 10;
+            (*pfromArray)[fcnt + from] = 1;
+            (*ptoArray)[tcnt + to * 2 + promote] = 1;
+            fcnt += 11 * 11 + 7;
+            tcnt += 11 * 11 * 2;
         }
         std::cerr << fileName << std::endl;
         cnpy::npz_save(fileName, "input",
                        pinputArray->data(), inputShape.data(), inputShape.size(), "w");
         cnpy::npz_save(fileName, "from",
-                       pmoveArray->data(), moveShape.data(), moveShape.size(), "a");
+                       pfromArray->data(), fromShape.data(), fromShape.size(), "a");
+        cnpy::npz_save(fileName, "to",
+                       ptoArray->data(), toShape.data(), toShape.size(), "a");
     }
     
     delete pinputArray;
-    delete pmoveArray;
+    delete pfromArray;
+    delete ptoArray;
 }
 
 void genPolicyTeacher(Searcher *const psearcher,
@@ -244,19 +249,20 @@ void genPolicyTeacher(Searcher *const psearcher,
             // 出力データ作成
             if(move.isDrop()){ // 駒打ち
                 image.from = 11 * 11 + move.pieceTypeDropped() - Pawn;
+                image.promote = 0;
             }else{
                 Square sq = inverseIfWhite(myColor, move.from());
                 File f = makeFile(sq);
                 Rank r = makeRank(sq);
                 image.from = ((int)f + 1) * 11 + (int)r + 1;
+                
+                image.promote = (move.isPromotion() || (move.pieceTypeFrom() >= ProPawn))) ? 1 : 0;
             }
             
             Square sq = inverseIfWhite(myColor, move.to());
             File f = makeFile(sq);
             Rank r = makeRank(sq);
             image.to = ((int)f + 1) * 11 + (int)r + 1;
-            
-            image.promote = move.isPromotion() ? 1 : 0;
             
             images.push_back(image);
         }
