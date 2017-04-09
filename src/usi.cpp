@@ -1119,7 +1119,8 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
 }
 
 // 以下NN学習データ作成用
-#include "nn/170405.hpp"
+//#include "nn/170405.hpp"
+#include "nn/170409.hpp"
 
 int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     

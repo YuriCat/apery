@@ -76,7 +76,6 @@ void imageSaverThread(const int threadIndex, const int threads,
     auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
     auto *const pfromArray = new std::array<float, batchSize * 11 * 11 * 10>();
     auto *const ptoArray = new std::array<float, batchSize * 11 * 11 * 10>();
-    auto *const ptoArray =
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
     const std::vector<unsigned int> fromShape = {batchSize, 11 * 11 + 7};
     const std::vector<unsigned int> toShape = {batchSize, 11 * 11 * 2};
@@ -256,7 +255,7 @@ void genPolicyTeacher(Searcher *const psearcher,
                 Rank r = makeRank(sq);
                 image.from = ((int)f + 1) * 11 + (int)r + 1;
                 
-                image.promote = (move.isPromotion() || (move.pieceTypeFrom() >= ProPawn))) ? 1 : 0;
+                image.promote = (move.isPromotion() || (move.pieceTypeFrom() >= ProPawn)) ? 1 : 0;
             }
             
             Square sq = inverseIfWhite(myColor, move.to());
