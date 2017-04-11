@@ -103,6 +103,7 @@ void imageSaverThread(const int threadIndex, const int threads,
             const int promote = (*pimages)[index].promote;
             (*pmoveArray)[mcnt + from] = 1;
             (*pmoveArray)[mcnt + 11 * 11 + 7 + to * 2 + promote] = 1;
+            mcnt += 11 * 11 + 7 + 11 * 11 * 2;
         }
         std::cerr << fileName << std::endl;
         cnpy::npz_save(fileName, "input",

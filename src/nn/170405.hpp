@@ -74,9 +74,9 @@ void imageSaverThread(const int threadIndex, const int threads,
     // 学習データ保存をスレッドで分担して行う
     // .npz形式での保存
     auto *const pinputArray = new std::array<float, batchSize * 11 * 11 * BoardImage::plains>();
-    auto *const pmoveArray = new std::array<float, batchSize * 11 * 11 * 10>();
+    auto *const pmoveArray = new std::array<float, batchSize * (11 * 11 * 10 + 1)>();
     const std::vector<unsigned int> inputShape = {batchSize, 11, 11, BoardImage::plains};
-    const std::vector<unsigned int> moveShape = {batchSize, 11 * 11, 10};
+    const std::vector<unsigned int> moveShape = {batchSize, 11 * 11 * 10 + 1};
     
     for(int fileIndex = threadIndex; fileIndex < fileNum; fileIndex += threads){
         int cnt;
@@ -102,12 +102,13 @@ void imageSaverThread(const int threadIndex, const int threads,
             const int to = (*pimages)[index].to;
             const int promote = (*pimages)[index].promote;
             if(from >= 121){ // 駒打ち
-                (*pmoveArray)[cnt + to * 10 + 3 + (from - 121)] = 1;
+                (*pmoveArray)[cnt + 11 * 11 * 1 + to * 9 + 2 + (from - 121)] = 1;
+                (*pmoveArray)[cnt + 11 * 11 * 10] = 1;
             }else{
-                (*pmoveArray)[cnt + from * 10 + 0] = 1;
-                (*pmoveArray)[cnt + to * 10 + 1 + promote] = 1;
+                (*pmoveArray)[cnt + from] = 1;
+                (*pmoveArray)[cnt + 11 * 11 * 1 + to * 9 + promote] = 1;
             }
-            cnt += 11 * 11 * 10;
+            cnt += 11 * 11 * 10 + 1;
         }
         std::cerr << fileName << std::endl;
         cnpy::npz_save(fileName, "input",
