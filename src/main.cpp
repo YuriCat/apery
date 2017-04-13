@@ -62,14 +62,14 @@ int main(int argc, char* argv[]) {
     //auto s = std::unique_ptr<Searcher>(new Searcher);
     Searcher *s = new Searcher();
     s->init();
-    
+#ifdef LEARN
     for(int c = 1; c < argc; ++c){
         if(!strcmp(argv[c], "-mptd")){
             mptd_main(s, argc, argv);
             return 0;
         }
     }
-    
+#endif
     s->doUSICommandLoop(argc, argv);
     s->threads.exit();
 }

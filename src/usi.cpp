@@ -31,6 +31,16 @@
 #include "benchmark.hpp"
 #include "learner.hpp"
 
+// 以下NN関係
+#include "nn/def170405.hpp"
+#include "nn/input170405.hpp"
+//#include "nn/move170405.hpp"
+#include "nn/move170409.hpp"
+#ifdef LEARN
+#include "nn/datagen.hpp"
+#endif
+#include "nn/graph.hpp"
+
 namespace {
     void onThreads(Searcher* s, const USIOption&)      { s->threads.readUSIOptions(s); }
     void onHashSize(Searcher* s, const USIOption& opt) { s->tt.resize(opt); }
@@ -88,7 +98,7 @@ void OptionsMap::init(Searcher* s) {
     (*this)["USI_Hash"]                    = USIOption(256, 1, MaxHashMB, onHashSize, s);
     (*this)["Clear_Hash"]                  = USIOption(onClearHash, s);
     (*this)["Book_File"]                   = USIOption("book/20150503/book.bin");
-    (*this)["Eval_Dir"]                    = USIOption("20161007");
+    (*this)["Eval_Dir"]                    = USIOption("/Users/ohto/Documents/apery/src/20161007");
     (*this)["Best_Book_Move"]              = USIOption(false);
     (*this)["OwnBook"]                     = USIOption(true);
     (*this)["Min_Book_Ply"]                = USIOption(SHRT_MAX, 0, SHRT_MAX);
@@ -109,9 +119,9 @@ void OptionsMap::init(Searcher* s) {
     (*this)["Minimum_Thinking_Time"]       = USIOption(20, 0, INT_MAX);
     (*this)["Threads"]                     = USIOption(cpuCoreCount(), 1, MaxThreads, onThreads, s);
 #ifdef NDEBUG
-    (*this)["Engine_Name"]                 = USIOption("Apery");
+    (*this)["Engine_Name"]                 = USIOption("ShogiNet");
 #else
-    (*this)["Engine_Name"]                 = USIOption("Apery Debug Build");
+    (*this)["Engine_Name"]                 = USIOption("ShogiNet Debug Build");
 #endif
 }
 
@@ -175,8 +185,11 @@ void go(const Position& pos, std::istringstream& ssCmd) {
     std::string token;
 
     limits.startTime.restart();
+    
+    // NN計算
+    getBestMove(pos);
 
-    while (ssCmd >> token) {
+    /*while (ssCmd >> token) {
         if      (token == "ponder"     ) limits.ponder = true;
         else if (token == "btime"      ) ssCmd >> limits.time[Black];
         else if (token == "wtime"      ) ssCmd >> limits.time[White];
@@ -196,7 +209,7 @@ void go(const Position& pos, std::istringstream& ssCmd) {
         limits.moveTime -= pos.searcher()->options["Byoyomi_Margin"];
     else if (pos.searcher()->options["Time_Margin"] != 0)
         limits.time[pos.turn()] -= pos.searcher()->options["Time_Margin"];
-    pos.searcher()->threads.startThinking(pos, limits, pos.searcher()->states);
+    pos.searcher()->threads.startThinking(pos, limits, pos.searcher()->states);*/
 }
 
 #if defined LEARN
@@ -1063,6 +1076,10 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
                 std::unique_ptr<Evaluator>(new Evaluator)->init(options["Eval_Dir"], true);
                 evalTableIsRead = true;
             }
+            if (psession == nullptr){
+                // Tensorflowのセッション開始と計算グラフ読み込み
+                initializeGraph("./policy_graph170409.pb");
+            }
             SYNCCOUT << "readyok" << SYNCENDL;
         }
         else if (token == "setoption") setOption(ssCmd);
@@ -1118,10 +1135,7 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
     threads.main()->waitForSearchFinished();
 }
 
-// 以下NN学習データ作成用
-//#include "nn/170405.hpp"
-#include "nn/170409.hpp"
-
+#ifdef LEARN
 int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     
     std::string csaFilePath = "./2chkifu.csa", outputDir = "./";
@@ -1142,3 +1156,4 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     
     return 0;
 }
+#endif
