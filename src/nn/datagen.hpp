@@ -86,7 +86,6 @@ void genPolicyTeacher(Searcher *const psearcher,
             siv.push_back(StateInfo());
             Color myColor = pos.turn();
             Move move = bm.move;
-            pos.doMove(move, siv.back());
             //std::cerr << pos.toSFEN() << std::endl;
             
             BoardImage image;
@@ -95,7 +94,12 @@ void genPolicyTeacher(Searcher *const psearcher,
             // 出力データ作成
             moveToFromTo(move, myColor, &image.from, &image.to);
             
+            //std::cerr << myColor << " " << move.toUSI() << " (" << image.from << ", " << image.to << ")" << std::endl;
+            //getBestMove(
+            
             images.push_back(image);
+                        
+            pos.doMove(move, siv.back());
         }
         std::cerr << images.size() << std::endl;
     }

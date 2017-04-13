@@ -36,10 +36,10 @@
 #include "nn/input170405.hpp"
 //#include "nn/move170405.hpp"
 #include "nn/move170409.hpp"
+#include "nn/graph.hpp"
 #ifdef LEARN
 #include "nn/datagen.hpp"
 #endif
-#include "nn/graph.hpp"
 
 namespace {
     void onThreads(Searcher* s, const USIOption&)      { s->threads.readUSIOptions(s); }
@@ -1150,6 +1150,12 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
             threads = atoi(argv[c + 1]);
         }
     }
+    
+    // 出力を逐次確認したい場合のみ
+    /*if (psession == nullptr){
+        // Tensorflowのセッション開始と計算グラフ読み込み
+        initializeGraph("./policy_graph170409.pb");
+    }*/
     
     genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
     
