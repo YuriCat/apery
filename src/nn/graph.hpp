@@ -82,28 +82,7 @@ Move getBestMove(const Position& pos){
     auto mat = otensors[0].matrix<float>();
     
     // Move形式の行動それぞれの得点を計算し最高点の手を選ぶ
-    /*for(int i = 0; i < ImageMoveOutputs; ++i){
-     std::cerr << mat(i) << " ";
-     }std::cerr << std::endl;*/
-    int cnt = 0;
-    for(int j = 0; j < ImageRankNum; ++j){
-        for(int i = ImageFileNum - 1; i >= 0; --i){
-            std::cerr << " " << std::setw(2) << int(mat(i * ImageRankNum + j) * 100);
-        }
-        std::cerr << std::endl;
-    }std::cerr << std::endl;
-    for(int i = 0; i < ImageDropSize; ++i){
-        std::cerr << " " << std::setw(2) << int(mat(ImageSize + i));
-    }std::cerr << std::endl;
-    std::cerr << std::endl;
-    for(int j = 0; j < ImageRankNum; ++j){
-        for(int i = ImageFileNum - 1; i >= 0; --i){
-            int ito = ImageFromSize + (i * ImageRankNum + j) * ImageToPlains;
-            std::cerr << " " << std::setw(2) << int(mat(ito) * 100);
-            std::cerr << "(" << std::setw(2) << int(mat(ito + 1) * 100) << ")";
-        }
-        std::cerr << std::endl;
-    }std::cerr << std::endl;
+    std::cerr << toOutputString(mat) << std::endl;
     
     /*int from = -1, to = -1;
      float fromBestValue = -FLT_MAX, toBestVale = -FLT_MAX;

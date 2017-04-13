@@ -33,7 +33,8 @@
 
 // 以下NN関係
 #include "nn/def170405.hpp"
-#include "nn/input170405.hpp"
+//#include "nn/input170405.hpp"
+#include "nn/input170413.hpp"
 //#include "nn/move170405.hpp"
 #include "nn/move170409.hpp"
 #include "nn/graph.hpp"

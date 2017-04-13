@@ -40,3 +40,27 @@ void moveToFromTo(const Move& move, const Color myColor,
         }
     }
 }
+
+template<class array_t>
+std::string toOutputString(const array_t& mat){
+    std::ostringstream oss;
+    for(int j = 0; j < ImageRankNum; ++j){
+        for(int i = ImageFileNum - 1; i >= 0; --i){
+            oss << " " << std::setw(2) << int(mat(i * ImageRankNum + j) * 100);
+        }
+        oss << std::endl;
+    }oss << std::endl;
+    for(int i = 0; i < ImageDropSize; ++i){
+        oss << " " << std::setw(2) << int(mat(ImageSize + i));
+    }oss << std::endl;
+    oss << std::endl;
+    for(int j = 0; j < ImageRankNum; ++j){
+        for(int i = ImageFileNum - 1; i >= 0; --i){
+            int ito = ImageFromSize + (i * ImageRankNum + j) * ImageToPlains;
+            oss << " " << std::setw(2) << int(mat(ito) * 100);
+            oss << "(" << std::setw(2) << int(mat(ito + 1) * 100) << ")";
+        }
+        oss << std::endl;
+    }oss << std::endl;
+    return oss.str();
+}
