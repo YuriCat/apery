@@ -34,7 +34,8 @@ void imageSaverThread(const int threadIndex, const int threads,
         int mcnt = 0;
         for(int dataIndex = 0; dataIndex < batchSize; ++dataIndex){
             int index = fileIndex * batchSize + dataIndex;
-            imageToMove((*pimages)[index].from, (*pimages)[index].to, pmoveArray->data() + cnt);
+            imageToMove((*pimages)[index].from, (*pimages)[index].to, pmoveArray->data() + mcnt);
+            mcnt += ImageOutputs;
         }
         std::cerr << fileName << std::endl;
         cnpy::npz_save(fileName, "input",
