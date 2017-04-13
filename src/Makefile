@@ -1,10 +1,10 @@
 COMPILER = g++
 #COMPILER = mpicxx
-CFLAGS   = -std=c++14 -fno-exceptions -Wextra -Ofast -MMD -MP -fopenmp -g -fexceptions #-fno-rtti
-#CFLAGS   += -march=native # make publish の時はここをコメントアウトする必要がある。
-LDFLAGS  = -lpthread -lz #-lboost_mpi -lboost_serialization
+CFLAGS   = -std=c++14 -fno-exceptions -Wextra -Ofast -MMD -MP -g -fexceptions -Wno-unused-parameter #-fno-rtti
+CFLAGS   += -march=native # make publish の時はここをコメントアウトする必要がある。
+LDFLAGS  = -lpthread -lz -ltensorflow_cc#-lboost_mpi -lboost_serialization
 LIBS     =
-INCLUDE  = #-I../include
+INCLUDE  = -I/usr/local/include/tensorflow/include/ #-I../include
 TARGET   = apery
 TARGET_BMI2  = $(TARGET)_bmi2
 TARGET_SSE42 = $(TARGET)_sse42
