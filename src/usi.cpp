@@ -37,7 +37,8 @@
 //#include "nn/input170413.hpp"
 #include "nn/input170419.hpp"
 //#include "nn/move170405.hpp"
-#include "nn/move170409.hpp"
+//#include "nn/move170409.hpp"
+#include "nn/move170419.hpp"
 #include "nn/graph.hpp"
 #ifdef LEARN
 #include "nn/datagen.hpp"
