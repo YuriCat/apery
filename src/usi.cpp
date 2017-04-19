@@ -34,7 +34,8 @@
 // 以下NN関係
 #include "nn/def170405.hpp"
 //#include "nn/input170405.hpp"
-#include "nn/input170413.hpp"
+//#include "nn/input170413.hpp"
+#include "nn/input170419.hpp"
 //#include "nn/move170405.hpp"
 #include "nn/move170409.hpp"
 #include "nn/graph.hpp"
@@ -1079,7 +1080,7 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
             }
             if (psession == nullptr){
                 // Tensorflowのセッション開始と計算グラフ読み込み
-                initializeGraph("./policy_graph170409.pb");
+                initializeGraph("./policy_graph.pb");
             }
             SYNCCOUT << "readyok" << SYNCENDL;
         }

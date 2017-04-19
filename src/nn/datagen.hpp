@@ -48,6 +48,8 @@ void imageSaverThread(const int threadIndex, const int threads,
     delete pmoveArray;
 }
 
+#include <unordered_map>
+
 void genPolicyTeacher(Searcher *const psearcher,
                       const std::string& ipath,
                       const std::string& opath,
@@ -64,6 +66,37 @@ void genPolicyTeacher(Searcher *const psearcher,
     Learner *plearner = new Learner();
     
     plearner->readBook(pos, ipath, "-", "-", "-", 0);
+    
+    // 局面頻度表の計算
+    /*std::unordered_map<u64, int> hash;
+    
+    for(auto& game : plearner->bookMovesDatum_){
+        pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+                nullptr);
+        std::vector<StateInfo> siv;
+        for(auto& bm : game){
+            hash[pos.getKey()] += 1;
+            siv.push_back(StateInfo());
+            Move move = bm.move;
+            pos.doMove(move, siv.back());
+        }
+    }
+    
+    std::vector<int> v;
+    for(auto& d : hash){
+        v.push_back(d.second);
+    }
+    std::sort(v.begin(), v.end(), std::greater<int>());
+    
+    std::ofstream ofs("./state.csv");
+    for(int i = 0; i < v.size(); ++i){
+        ofs << (i + 1) << "," << v[i] << "," << log(i + 1) << "," << log(v[i]) << std::endl;
+    }
+    ofs.close();
+    
+    exit(1);*/
+    
+    //int handNum[]
     
     // データをランダムに読んで教師データ作成
     u64 positionSum = 0;

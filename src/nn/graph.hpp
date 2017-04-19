@@ -103,19 +103,52 @@ Move getBestMove(const Position& pos){
      indexToMove(from, to);*/
     
     Move bestMove = Move::moveNone();
-    float bestValue = -FLT_MAX;
-    for(int i = 0; i < n; ++i){
-        Move m = moves[i].move;
-        int from, to;
-        moveToFromTo(m, pos.turn(), &from, &to);
-        float tval = mat(ImageFromSize + to);
-        float fval = mat(from);
-        float val = fval * tval;
-        std::cerr << m.toUSI() << " " << from << " " << to << " " << val
-        << " (" << fval << ", " << tval << ")" << std::endl;
-        if(val > bestValue){
-            bestMove = m;
-            bestValue = val;
+    if(pos.gamePly() < 16){
+        // 序盤はランダム性を入れる
+        float temperature = (1 - pos.gamePly() / 16);
+        float score[1024];
+        float scoreSum = 0;
+        for(int i = 0; i < n; ++i){
+            Move m = moves[i].move;
+            int from, to;
+            moveToFromTo(m, pos.turn(), &from, &to);
+            float tval = mat(ImageFromSize + to);
+            float fval = mat(from);
+            float val = fval * tval;
+            if(val <= 0){
+                score[i] = 0;
+            }else{
+                double tscore = std::exp(std::log(val) / temperature);
+                score[i] = tscore;
+                scoreSum += tscore;
+            }
+        }
+        std::random_device dice;
+        std::uniform_real_distribution<float> uni(0, 1);
+        float r = scoreSum * uni(dice);
+        int j;
+        for(j = n - 1; j > 0; --j){
+            r -= score[j];
+            if(r < 0){
+                break;
+            }
+        }
+        bestMove = moves[j].move;
+    }else{
+        float bestValue = -FLT_MAX;
+        for(int i = 0; i < n; ++i){
+            Move m = moves[i].move;
+            int from, to;
+            moveToFromTo(m, pos.turn(), &from, &to);
+            float tval = mat(ImageFromSize + to);
+            float fval = mat(from);
+            float val = fval * tval;
+            std::cerr << m.toUSI() << " " << from << " " << to << " " << val
+            << " (" << fval << ", " << tval << ")" << std::endl;
+            if(val > bestValue){
+                bestMove = m;
+                bestValue = val;
+            }
         }
     }
     SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
