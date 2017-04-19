@@ -234,6 +234,8 @@ void positionToImage(const Position& pos, const Color myColor, BoardImage& image
     // 利き数
     Bitboard orgOcc = pos.occupiedBB();
     //Bitboard occ = inverseIfWhite(myColor, orgOcc);
+    Bitboard BBNone = Bitboard(0, 0);
+    
     for(int i = 0; i < FileNum; ++i){
         for(int j = 0; j < RankNum; ++j){
             Square sq = inverseIfWhite(myColor, makeSquare(File(i), Rank(j)));
@@ -271,7 +273,7 @@ void positionToImage(const Position& pos, const Color myColor, BoardImage& image
                 Color pc = pieceToColor(p);
                 PieceType pt = pieceToPieceType(p);
                 Bitboard attacks = inverseIfWhite(myColor, pos.attacksFrom(pt, pc, sq, orgOcc));
-                Bitboard idealAttacks = inverseIfWhite(myColor, pos.attacksFrom(pt, pc, sq, orgOcc));
+                Bitboard idealAttacks = inverseIfWhite(myColor, pos.attacksFrom(pt, pc, sq, BBNone));
                 
                 if(pt == Lance){ // 香車
                     image.fillBB(101 + (myColor != pc ? 1 : 0), idealAttacks & ~attacks);
