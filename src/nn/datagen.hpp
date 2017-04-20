@@ -157,8 +157,8 @@ void genPolicyTeacher(Searcher *const psearcher,
     std::cerr << "threads = " << threads << std::endl;
     
     // シャッフル用のサイコロ用意
-    //const u32 seed = 103;
-    const u32 seed = (unsigned int)time(NULL);
+    const u32 seed = 103;
+    //const u32 seed = (unsigned int)time(NULL);
     std::mt19937 mt(seed);
     
     {
@@ -257,6 +257,8 @@ void genPolicyTeacher(Searcher *const psearcher,
         }
         std::cerr << images.size() << std::endl;
     }
+    
+    std::shuffle(images.begin(), images.end(), mt);
     
     // 保存
     std::vector<std::thread> savers;
