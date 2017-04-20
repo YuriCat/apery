@@ -123,9 +123,7 @@ CheckInfo::CheckInfo(const Position& pos, const Color turn) {
     checkBB[Dragon   ] = checkBB[Rook  ] | pos.attacksFrom<King>(ksq);
 }
 
-CheckInfo::CheckInfo(const Position& pos) {
-    CheckInfo::CheckInfo(pos, pos.turn());
-}
+CheckInfo::CheckInfo(const Position& pos) : CheckInfo::CheckInfo(pos, pos.turn()){}
 
 Bitboard Position::attacksFrom(const PieceType pt, const Color c, const Square sq, const Bitboard& occupied) {
     switch (pt) {
