@@ -3,10 +3,10 @@
  Katsuki Ohto
  */
 
-// fromとtoを駒種に分けるパターン
+// toを駒種に分けるパターン
 // 持ち駒は7ビットで別
 constexpr int ImageToPlains = 14;
-constexpr int ImageFromPlains = 14;
+constexpr int ImageFromPlains = 1;
 constexpr int ImageDropSize = 7;
 constexpr int ImageFromSize = ImageFromPlains * ImageSize + ImageDropSize;
 constexpr int ImageToSize = ImageToPlains * ImageSize;
@@ -33,14 +33,14 @@ void moveToFromTo(const Move& move, const Color myColor,
     *pto = (((int)f + ImagePadding) * ImageRankNum + (int)r + ImagePadding) * ImageToPlains;
     
     if(move.isDrop()){ // 駒打ち
-        *pfrom = ImageSize + move.pieceTypeDropped() - Pawn;
+        *pfrom = ImageSize * ImageFromPlains + move.pieceTypeDropped() - Pawn;
         *pto += move.pieceTypeDropped() - Pawn;
     }else{
         Square sq = inverseIfWhite(myColor, move.from());
         File f = makeFile(sq);
         Rank r = makeRank(sq);
         *pfrom = (((int)f + ImagePadding) * ImageRankNum + (int)r + ImagePadding) * ImageFromPlains;
-        *pfrom += move.pieceTypeFrom() - Pawn;
+        //*pfrom += move.pieceTypeFrom() - Pawn;
         
         *pto += move.pieceTypeTo() - Pawn;
     }

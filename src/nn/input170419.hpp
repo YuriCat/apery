@@ -8,37 +8,6 @@
 constexpr int ImageInputPlains = 107;
 constexpr int ImageInputs = ImageInputPlains * ImageSize;
 
-u32 reverseBits(u32 v){
-    v = (v >> 16) | (v << 16);
-    v = ((v >> 8) & 0x00ff00ff) | ((v & 0x00ff00ff) << 8);
-    v = ((v >> 4) & 0x0f0f0f0f) | ((v & 0x0f0f0f0f) << 4);
-    v = ((v >> 2) & 0x33333333) | ((v & 0x33333333) << 2);
-    return ((v >> 1) & 0x55555555) | ((v & 0x55555555) << 1);
-}
-u64 reverseBits(u64 v)noexcept{
-    v = (v >> 32) | (v << 32);
-    v = ((v >> 16) & 0x0000ffff0000ffff) | ((v & 0x0000ffff0000ffff) << 16);
-    v = ((v >> 8) & 0x00ff00ff00ff00ff) | ((v & 0x00ff00ff00ff00ff) << 8);
-    v = ((v >> 4) & 0x0f0f0f0f0f0f0f0f) | ((v & 0x0f0f0f0f0f0f0f0f) << 4);
-    v = ((v >> 2) & 0x3333333333333333) | ((v & 0x3333333333333333) << 2);
-    return  ((v >> 1) & 0x5555555555555555) | ((v & 0x5555555555555555) << 1);
-}
-
-Bitboard inverse(Bitboard bb){
-    u64 b0 = bb.p(0);
-    u32 b1 = u32(bb.p(1));
-    u64 rb0 = reverseBits(b0);
-    u32 rb1 = reverseBits(b1);
-    
-    u64 nb1 = rb0 >> (64 - RankNum * 2);
-    u64 nb0 = (rb1 >> (32 - RankNum * 2)) | (rb0 << (SquareNum - 64));
-    nb0 &= 0xEFFFFFFFFFFFFFFF;
-    return Bitboard(nb0, nb1);
-}
-Bitboard inverseIfWhite(Color c, Bitboard bb){
-    return (c == Black) ? bb : inverse(bb);
-}
-
 struct BoardImage{
     // NNへのインプットデータ
     std::bitset<ImageInputPlains> board[ImageFileNum][ImageRankNum];
@@ -216,7 +185,7 @@ void positionToImage(const Position& pos, const Color myColor, BoardImage& image
     }
     
     // 王手情報
-    CheckInfo checkInfo(pos);
+    CheckInfo checkInfo(pos, myColor);
     image.fillBB(63, inverseIfWhite(myColor, checkInfo.dcBB));
     image.fillBB(64, inverseIfWhite(myColor, checkInfo.pinned));
     
@@ -226,7 +195,7 @@ void positionToImage(const Position& pos, const Color myColor, BoardImage& image
             Square sq = inverseIfWhite(myColor, makeSquare(File(i), Rank(j)));
             Piece p = pos.piece(sq);
             if(pieceToPieceType(p) == Pawn){
-                image.fillFile(65 + ((pieceToColor(p) != myColor) ? 1 : 0), i);
+                image.fillFile(65 + ((pieceToColor(p) != myColor) ? 1 : 0), i + ImagePadding);
             }
         }
     }

@@ -98,13 +98,13 @@ namespace {
     }
 }
 
-CheckInfo::CheckInfo(const Position& pos) {
-    const Color them = oppositeColor(pos.turn());
+CheckInfo::CheckInfo(const Position& pos, const Color turn) {
+    const Color them = oppositeColor(turn);
     const Square ksq = pos.kingSquare(them);
-
+    
     pinned = pos.pinnedBB();
     dcBB = pos.discoveredCheckBB();
-
+    
     checkBB[Pawn     ] = pos.attacksFrom<Pawn  >(them, ksq);
     checkBB[Lance    ] = pos.attacksFrom<Lance >(them, ksq);
     checkBB[Knight   ] = pos.attacksFrom<Knight>(them, ksq);
@@ -121,6 +121,10 @@ CheckInfo::CheckInfo(const Position& pos) {
     checkBB[ProSilver] = checkBB[Gold];
     checkBB[Horse    ] = checkBB[Bishop] | pos.attacksFrom<King>(ksq);
     checkBB[Dragon   ] = checkBB[Rook  ] | pos.attacksFrom<King>(ksq);
+}
+
+CheckInfo::CheckInfo(const Position& pos) {
+    CheckInfo::CheckInfo(pos, pos.turn());
 }
 
 Bitboard Position::attacksFrom(const PieceType pt, const Color c, const Square sq, const Bitboard& occupied) {
