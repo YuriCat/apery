@@ -1143,7 +1143,7 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     
     std::string csaFilePath = "./2chkifu.csa", outputDir = "./";
     int threads = 1;
-    
+    bool testMode = false;
     for(int c = 1; c < argc; ++c){
         if(!strcmp(argv[c], "-l")){
             csaFilePath = std::string(argv[c + 1]);
@@ -1151,6 +1151,8 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
             outputDir = std::string(argv[c + 1]);
         }else if(!strcmp(argv[c], "-th")){
             threads = atoi(argv[c + 1]);
+        }else if(!strcmp(argv[c], "-ac")){
+            testMode = true;
         }
     }
     
@@ -1160,8 +1162,11 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
         initializeGraph("./policy_graph170409.pb");
     }*/
     
-    genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
-    
+    if(testMode){
+        calcAccuracy(psearcher, csaFilePath);
+    }else{
+        genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
+    }
     
     return 0;
 }

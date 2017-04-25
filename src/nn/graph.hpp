@@ -61,16 +61,17 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
     }
     std::vector<tensorflow::Tensor> otensors; // 出力はTensor型で受け取る
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"last/add:0"}, {}, &otensors);
-    auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
+    //auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
+    auto session_run_status = psession->Run({{"input:0", tensor}}, {"normalize/concat:0"}, {}, &otensors);
     return otensors;
 }
 
-Move getBestMove(const Position& pos){
+Move getBestMove(const Position& pos, bool randomness = true){
     // 状態 pos にて moves 内から最高点がついた行動を選ぶ
     ExtMove moves[1024];
     const int n = generateMoves<LegalAll>(moves, pos) - moves;
     if(n <= 0){
-        SYNCCOUT << "bestmove resign" << SYNCENDL;
+        //SYNCCOUT << "bestmove resign" << SYNCENDL;
         return Move::moveNone();
     }
     
@@ -82,7 +83,7 @@ Move getBestMove(const Position& pos){
     auto mat = otensors[0].matrix<float>();
     
     // Move形式の行動それぞれの得点を計算し最高点の手を選ぶ
-    std::cerr << toOutputString(mat) << std::endl;
+    //std::cerr << toOutputString(mat) << std::endl;
     
     /*int from = -1, to = -1;
      float fromBestValue = -FLT_MAX, toBestVale = -FLT_MAX;
@@ -103,7 +104,7 @@ Move getBestMove(const Position& pos){
      indexToMove(from, to);*/
     
     Move bestMove = Move::moveNone();
-    if(pos.gamePly() < 16){
+    if(randomness && pos.gamePly() < 16){
         // 序盤はランダム性を入れる
         float temperature = (1 - pos.gamePly() / 16);
         float score[1024];
@@ -143,14 +144,48 @@ Move getBestMove(const Position& pos){
             float tval = mat(ImageFromSize + to);
             float fval = mat(from);
             float val = fval * tval;
-            std::cerr << m.toUSI() << " " << from << " " << to << " " << val
-            << " (" << fval << ", " << tval << ")" << std::endl;
+            //std::cerr << m.toUSI() << " " << from << " " << to << " " << val
+            //<< " (" << fval << ", " << tval << ")" << std::endl;
             if(val > bestValue){
                 bestMove = m;
                 bestValue = val;
             }
         }
     }
-    SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
+    //SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
     return bestMove;
+}
+
+void calcAccuracy(Searcher *const psearcher,
+                  const std::string& ipath){
+    
+    std::cerr << "accuracy test" << std::endl;
+    std::cerr << "input path : " << ipath << std::endl;
+    
+    // 棋譜の読み込み
+    Position pos(psearcher);
+    Learner *plearner = new Learner();
+    
+    plearner->readBook(pos, ipath, "-", "-", "-", 0);
+    
+    if (psession == nullptr){
+        // Tensorflowのセッション開始と計算グラフ読み込み
+        initializeGraph("./policy_graph.pb");
+    }
+    
+    int okCnt = 0, allCnt = 0;
+    for(auto& game : plearner->bookMovesDatum_){
+        pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+                nullptr);
+        std::vector<StateInfo> siv;
+        for(auto& bm : game){
+            siv.push_back(StateInfo());
+            Move move = bm.move;
+            Move tmove = getBestMove(pos, false);
+            if(move == tmove){ okCnt += 1; }
+            allCnt += 1;
+            pos.doMove(move, siv.back());
+        }
+        std::cerr << okCnt / (double)allCnt << "(" << okCnt << ", " << allCnt << ")" << std::endl;
+    }
 }
