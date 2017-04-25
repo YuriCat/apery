@@ -66,12 +66,14 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
     return otensors;
 }
 
-Move getBestMove(const Position& pos, bool randomness = true){
+Move getBestMove(const Position& pos, bool testMode = false){
     // 状態 pos にて moves 内から最高点がついた行動を選ぶ
     ExtMove moves[1024];
     const int n = generateMoves<LegalAll>(moves, pos) - moves;
     if(n <= 0){
-        //SYNCCOUT << "bestmove resign" << SYNCENDL;
+        if(!testMode){
+            SYNCCOUT << "bestmove resign" << SYNCENDL;
+        }
         return Move::moveNone();
     }
     
@@ -104,7 +106,7 @@ Move getBestMove(const Position& pos, bool randomness = true){
      indexToMove(from, to);*/
     
     Move bestMove = Move::moveNone();
-    if(randomness && pos.gamePly() < 16){
+    if(!testMode && pos.gamePly() < 16){
         // 序盤はランダム性を入れる
         float temperature = (1 - pos.gamePly() / 16);
         float score[1024];
@@ -152,7 +154,9 @@ Move getBestMove(const Position& pos, bool randomness = true){
             }
         }
     }
-    //SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
+    if(!testMode){
+        SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
+    }
     return bestMove;
 }
 
@@ -181,7 +185,7 @@ void calcAccuracy(Searcher *const psearcher,
         for(auto& bm : game){
             siv.push_back(StateInfo());
             Move move = bm.move;
-            Move tmove = getBestMove(pos, false);
+            Move tmove = getBestMove(pos, true);
             if(move == tmove){ okCnt += 1; }
             allCnt += 1;
             pos.doMove(move, siv.back());
