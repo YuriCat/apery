@@ -44,9 +44,11 @@ int initializeGraph(const std::string& graph_filename){
 
 std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num){
     // 入力をTensor形式に変換
-    auto tensor = tensorflow::Tensor(tensorflow::DT_FLOAT,
-                                     tensorflow::TensorShape({num, ImageFileNum, ImageRankNum, ImageInputPlains}));
-    auto mat = tensor.tensor<float, 4>(); // 参照
+    auto inputTensor = tensorflow::Tensor(tensorflow::DT_FLOAT,
+                                          tensorflow::TensorShape({num, ImageFileNum, ImageRankNum, ImageInputPlains}));
+    auto phaseTensor = tensorflow::Tensor(tensorflow::DT_BOOL,
+                                          tensorflow::TensorShape({}));
+    auto mat = inputTensor.tensor<float, 4>(); // 参照
     mat.setZero();
     // 値を設定
     int cnt = 0;
@@ -59,10 +61,12 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
             }
         }
     }
+    phaseTensor.tensor<bool, 0>()(0) = false;
     std::vector<tensorflow::Tensor> otensors; // 出力はTensor型で受け取る
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"last/add:0"}, {}, &otensors);
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
-    auto session_run_status = psession->Run({{"input:0", tensor}}, {"normalize/concat:0"}, {}, &otensors);
+    auto session_run_status = psession->Run({{"input:0", inputTensor}}, {"normalize/concat:0"}, {}, &otensors);
+    //auto session_run_status = psession->Run({{"input:0", inputTensor}, {"phase:0", phaseTensor}}, {"concat:0"}, {}, &otensors);
     return otensors;
 }
 
@@ -160,6 +164,7 @@ Move getBestMove(const Position& pos, bool testMode = false){
     return bestMove;
 }
 
+#ifdef LEARN
 void calcAccuracy(Searcher *const psearcher,
                   const std::string& ipath){
     
@@ -193,3 +198,4 @@ void calcAccuracy(Searcher *const psearcher,
         std::cerr << okCnt / (double)allCnt << "(" << okCnt << ", " << allCnt << ")" << std::endl;
     }
 }
+#endif
