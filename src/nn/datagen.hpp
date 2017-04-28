@@ -82,8 +82,7 @@ void imageGeneratorThread(const int threadIndex, const int threads,
             int ply = index - (*pcumulativePositions)[gameIndex];
             const std::vector<BookMoveData>& game = (*precords)[gameIndex];
             pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1", nullptr);
-            std::vector<StateInfo> siv;
-            siv.reserve(ply);
+            std::deque<StateInfo> siv;
             for(int i = 0; i < ply; ++i){
                 siv.push_back(StateInfo());
                 pos.doMove(game[i].move, siv.back());
@@ -235,7 +234,7 @@ void genPolicyTeacher(Searcher *const psearcher,
     for(auto& game : plearner->bookMovesDatum_){
         pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
                 nullptr);
-        std::vector<StateInfo> siv;
+        std::deque<StateInfo> siv;
         for(auto& bm : game){
             siv.push_back(StateInfo());
             Color myColor = pos.turn();

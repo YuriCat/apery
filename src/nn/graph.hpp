@@ -61,12 +61,15 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
             }
         }
     }
-    phaseTensor.tensor<bool, 0>()(0) = false;
+    //phaseTensor.scalar<bool>()(0) = false;
+    phaseTensor.flat<bool>().setZero();
     std::vector<tensorflow::Tensor> otensors; // 出力はTensor型で受け取る
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"last/add:0"}, {}, &otensors);
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
-    auto session_run_status = psession->Run({{"input:0", inputTensor}}, {"normalize/concat:0"}, {}, &otensors);
-    //auto session_run_status = psession->Run({{"input:0", inputTensor}, {"phase:0", phaseTensor}}, {"concat:0"}, {}, &otensors);
+    //auto session_run_status = psession->Run({{"input:0", inputTensor}}, {"normalize/concat:0"}, {}, &otensors);
+    std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"input", inputTensor}, {"is_training", phaseTensor}};
+    auto session_run_status = psession->Run(input, {"normalize/concat"}, {}, &otensors);
+    //std::cerr << session_run_status << std::endl;
     return otensors;
 }
 
@@ -84,6 +87,7 @@ Move getBestMove(const Position& pos, bool testMode = false){
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
     auto otensors = forward(images, 1);
+    //std::cerr << "num of tensors = " << otensors.size() << std::endl;
     
     // Tensor型から通常の配列型に変換
     auto mat = otensors[0].matrix<float>();
@@ -186,13 +190,13 @@ void calcAccuracy(Searcher *const psearcher,
     for(auto& game : plearner->bookMovesDatum_){
         pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
                 nullptr);
-        std::vector<StateInfo> siv;
+        std::deque<StateInfo> siv;
         for(auto& bm : game){
-            siv.push_back(StateInfo());
             Move move = bm.move;
             Move tmove = getBestMove(pos, true);
             if(move == tmove){ okCnt += 1; }
             allCnt += 1;
+            siv.push_back(StateInfo());
             pos.doMove(move, siv.back());
         }
         std::cerr << okCnt / (double)allCnt << "(" << okCnt << ", " << allCnt << ")" << std::endl;
