@@ -67,8 +67,8 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"last/add:0"}, {}, &otensors);
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
     //auto session_run_status = psession->Run({{"input:0", inputTensor}}, {"normalize/concat:0"}, {}, &otensors);
-    std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"input", inputTensor}, {"is_training", phaseTensor}};
-    auto session_run_status = psession->Run(input, {"normalize/concat"}, {}, &otensors);
+    std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"g/input", inputTensor}, {"g/is_training", phaseTensor}};
+    auto session_run_status = psession->Run(input, {"g/normalize/concat"}, {}, &otensors);
     //std::cerr << session_run_status << std::endl;
     return otensors;
 }
@@ -91,6 +91,8 @@ Move getBestMove(const Position& pos, bool testMode = false){
     
     // Tensor型から通常の配列型に変換
     auto mat = otensors[0].matrix<float>();
+    
+    //std::cerr << typeid(mat).name() << std::endl;
     
     // Move形式の行動それぞれの得点を計算し最高点の手を選ぶ
     //std::cerr << toOutputString(mat) << std::endl;
@@ -168,8 +170,22 @@ Move getBestMove(const Position& pos, bool testMode = false){
     return bestMove;
 }
 
+template<class callback_t>
+void calcMoveProb(const Position& pos, const callback_t& callback){
+    // 状態 pos にて moves 内 の行動集合に選択確率をつける
+    BoardImage images[1];
+    positionToImage(pos, pos.turn(), images[0]);
+    auto otensors = forward(images, 1);
+    //std::cerr << "num of tensors = " << otensors.size() << std::endl;
+    
+    // Tensor型から通常の配列型に変換
+    auto mat = otensors[0].matrix<float>();
+    
+    callback(mat);
+}
+
 #ifdef LEARN
-void calcAccuracy(Searcher *const psearcher,
+/*void calcAccuracy(Searcher *const psearcher,
                   const std::string& ipath){
     
     std::cerr << "accuracy test" << std::endl;
@@ -201,5 +217,102 @@ void calcAccuracy(Searcher *const psearcher,
         }
         std::cerr << okCnt / (double)allCnt << "(" << okCnt << ", " << allCnt << ")" << std::endl;
     }
+}*/
+
+void calcAccuracy(Searcher *const psearcher,
+                  const std::string& ipath){
+    
+    std::cerr << "accuracy test" << std::endl;
+    std::cerr << "input path : " << ipath << std::endl;
+    
+    const int trainPositionSum = 16300 * 1024;
+    const int testPositionSum = 128 * 1024;
+    
+    const u32 seed = 103;
+    std::mt19937 mt(seed);
+    
+    // 棋譜の読み込み
+    Position pos(psearcher);
+    Learner *plearner = new Learner();
+    
+    plearner->readBook(pos, ipath, "-", "-", "-", 0);
+    
+    if (psession == nullptr){
+        // Tensorflowのセッション開始と計算グラフ読み込み
+        initializeGraph("./policy_graph.pb");
+    }
+    
+    u64 positionSum = 0;
+    for(auto& game : plearner->bookMovesDatum_){
+        positionSum += game.size();
+    }
+    
+    std::vector<std::pair<Position, Move>> positions;
+    positions.reserve(positionSum);
+    
+    for(auto& game : plearner->bookMovesDatum_){
+        pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
+                nullptr);
+        std::deque<StateInfo> siv;
+        for(auto& bm : game){
+            Move move = bm.move;
+            positions.push_back(std::make_pair(pos, move));
+            siv.push_back(StateInfo());
+            pos.doMove(move, siv.back());
+        }
+    }
+    std::shuffle(positions.begin(), positions.end(), mt);
+    
+    // for test data
+    std::cerr << "for test data" << std::endl;
+    {
+        int okCnt = 0, allCnt = 0, okPlyCnt[6] = {0}, allPlyCnt[6] = {0};
+        for(int i = 0; i < testPositionSum; ++i){
+            int index = trainPositionSum + i;
+            const Position& tpos = positions[index].first;
+            const Move move = positions[index].second;
+            Move tmove = getBestMove(tpos, true);
+            int phase = std::min(5, tpos.gamePly() / 30);
+            if(move == tmove){
+                okCnt += 1;
+                okPlyCnt[phase] += 1;
+            }
+            allCnt += 1;
+            allPlyCnt[phase] += 1;
+            if(i % 1000 == 999){
+                std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+            }
+        }
+        std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+        for(int ph = 0; ph < 6; ++ph){
+            std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
+        }
+    }
+    // for training data
+    std::cerr << "for train data" << std::endl;
+    {
+        int okCnt = 0, allCnt = 0, okPlyCnt[6] = {0}, allPlyCnt[6] = {0};
+        for(int i = 0; i < testPositionSum; ++i){
+            int index = trainPositionSum - testPositionSum + i;
+            const Position& tpos = positions[index].first;
+            const Move move = positions[index].second;
+            Move tmove = getBestMove(tpos, true);
+            int phase = std::min(5, tpos.gamePly() / 30);
+            if(move == tmove){
+                okCnt += 1;
+                okPlyCnt[phase] += 1;
+            }
+            allCnt += 1;
+            allPlyCnt[phase] += 1;
+            if(i % 1000 == 999){
+                std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+            }
+        }
+        std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+        for(int ph = 0; ph < 6; ++ph){
+            std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
+        }
+    }
 }
+
 #endif
