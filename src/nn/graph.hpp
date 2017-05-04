@@ -257,7 +257,7 @@ void calcAccuracy(Searcher *const psearcher,
         int ply = 0;
         for(auto& bm : game){
             Move move = bm.move;
-            positions.push_back(std::make_pair(pos, move, ply));
+            positions.push_back(std::make_tuple(pos, move, ply));
             siv.push_back(StateInfo());
             pos.doMove(move, siv.back());
             ++ply;
