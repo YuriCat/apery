@@ -247,6 +247,15 @@ void calcAccuracy(Searcher *const psearcher,
         positionSum += game.size();
     }
     
+    // データを読む順番を決定
+    std::vector<int> order;
+    order.reserve(positionSum);
+    for(int i = 0; i < positionSum; ++i){
+        order.push_back(i);
+    }
+    std::shuffle(order.begin(), order.end(), mt);
+
+    
     std::vector<std::tuple<Position, Move, int>> positions;
     positions.reserve(positionSum);
     
@@ -285,6 +294,7 @@ void calcAccuracy(Searcher *const psearcher,
             if(i % 1000 == 999){
                 std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
                 for(int ph = 0; ph < 6; ++ph){
+                    std::cerr << "[" << ph * 30  << " ~] : ";
                     std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
                 }
             }
@@ -314,6 +324,7 @@ void calcAccuracy(Searcher *const psearcher,
             if(i % 1000 == 999){
                 std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
                 for(int ph = 0; ph < 6; ++ph){
+                    std::cerr << "[" << ph * 30  << " ~] : ";
                     std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
                 }
             }
