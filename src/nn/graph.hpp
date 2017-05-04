@@ -247,18 +247,20 @@ void calcAccuracy(Searcher *const psearcher,
         positionSum += game.size();
     }
     
-    std::vector<std::pair<Position, Move>> positions;
+    std::vector<std::tuple<Position, Move, int>> positions;
     positions.reserve(positionSum);
     
     for(auto& game : plearner->bookMovesDatum_){
         pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1",
                 nullptr);
         std::deque<StateInfo> siv;
+        int ply = 0;
         for(auto& bm : game){
             Move move = bm.move;
-            positions.push_back(std::make_pair(pos, move));
+            positions.push_back(std::make_pair(pos, move, ply));
             siv.push_back(StateInfo());
             pos.doMove(move, siv.back());
+            ++ply;
         }
     }
     std::shuffle(positions.begin(), positions.end(), mt);
@@ -269,10 +271,11 @@ void calcAccuracy(Searcher *const psearcher,
         int okCnt = 0, allCnt = 0, okPlyCnt[6] = {0}, allPlyCnt[6] = {0};
         for(int i = 0; i < testPositionSum; ++i){
             int index = trainPositionSum + i;
-            const Position& tpos = positions[index].first;
-            const Move move = positions[index].second;
+            const Position& tpos = std::get<0>(positions[index]);
+            const Move move = std::get<1>(positions[index]);
+            const int ply = std::get<2>(positions[index]);
             Move tmove = getBestMove(tpos, true);
-            int phase = std::min(5, tpos.gamePly() / 30);
+            int phase = std::min(5, ply / 30);
             if(move == tmove){
                 okCnt += 1;
                 okPlyCnt[phase] += 1;
@@ -281,6 +284,9 @@ void calcAccuracy(Searcher *const psearcher,
             allPlyCnt[phase] += 1;
             if(i % 1000 == 999){
                 std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+                for(int ph = 0; ph < 6; ++ph){
+                    std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
+                }
             }
         }
         std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
@@ -294,10 +300,11 @@ void calcAccuracy(Searcher *const psearcher,
         int okCnt = 0, allCnt = 0, okPlyCnt[6] = {0}, allPlyCnt[6] = {0};
         for(int i = 0; i < testPositionSum; ++i){
             int index = trainPositionSum - testPositionSum + i;
-            const Position& tpos = positions[index].first;
-            const Move move = positions[index].second;
+            const Position& tpos = std::get<0>(positions[index]);
+            const Move move = std::get<1>(positions[index]);
+            const int ply = std::get<2>(positions[index]);
             Move tmove = getBestMove(tpos, true);
-            int phase = std::min(5, tpos.gamePly() / 30);
+            int phase = std::min(5, ply / 30);
             if(move == tmove){
                 okCnt += 1;
                 okPlyCnt[phase] += 1;
@@ -306,6 +313,9 @@ void calcAccuracy(Searcher *const psearcher,
             allPlyCnt[phase] += 1;
             if(i % 1000 == 999){
                 std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;
+                for(int ph = 0; ph < 6; ++ph){
+                    std::cerr << okPlyCnt[ph] / (double)allPlyCnt[ph] << "(" << okPlyCnt[ph] << " / " << allPlyCnt[ph] << ")" << std::endl;
+                }
             }
         }
         std::cerr << okCnt / (double)allCnt << "(" << okCnt << " / " << allCnt << ")" << std::endl;

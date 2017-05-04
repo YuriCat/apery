@@ -37,10 +37,10 @@ def convert_board(file_path, size):
         if sq_from >= IMAGE_SIZE:
             # 駒打ち
             piece = sq_from - IMAGE_SIZE
-            moves[i][sq_to][2 + piece] = 1
+            moves[i][sq_to][3 + piece] = 1
         else:
             moves[i][sq_from][0] = 1
-            moves[i][sq_to][promote] = 1
+            moves[i][sq_to][1 + promote] = 1
         
         # input の処理
         for x in xrange(IMAGE_ROWS):
