@@ -1,4 +1,4 @@
-COMPILER = g++
+COMPILER = clang++
 #COMPILER = mpicxx
 CFLAGS   = -std=c++14 -fno-exceptions -Wextra -Ofast -MMD -MP -g -fexceptions -Wno-unused-parameter #-fno-rtti
 CFLAGS   += -march=native # make publish の時はここをコメントアウトする必要がある。
@@ -21,7 +21,7 @@ endif
 SOURCES  = main.cpp bitboard.cpp init.cpp mt64bit.cpp position.cpp evalList.cpp \
            move.cpp movePicker.cpp square.cpp usi.cpp generateMoves.cpp evaluate.cpp \
            search.cpp hand.cpp tt.cpp timeManager.cpp book.cpp benchmark.cpp \
-           thread.cpp common.cpp pieceScore.cpp cnpy.cpp
+           thread.cpp common.cpp pieceScore.cpp
 OBJECTS  = $(addprefix $(OBJDIR)/, $(SOURCES:.cpp=.o))
 DEPENDS  = $(OBJECTS:.o=.d)
 
