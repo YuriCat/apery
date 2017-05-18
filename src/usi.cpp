@@ -31,6 +31,8 @@
 #include "benchmark.hpp"
 #include "learner.hpp"
 
+#include "init.hpp"
+
 // 以下NN関係
 #include "nn/def170405.hpp"
 //#include "nn/input170405.hpp"
@@ -1171,3 +1173,75 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     return 0;
 }
 #endif
+
+#include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
+
+namespace py = pybind11;
+
+std::tuple<py::array_t<float>, py::array_t<s32>, py::array_t<float>>
+getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
+    // (局面, 着手, 評価値)が記録されたApery形式から受け取る
+    
+    std::random_device seed;
+    std::mt19937 mt(seed() ^ (unsigned int)time(NULL));
+    initTable();
+    Position::initZobrist();
+    HuffmanCodedPos::init();
+    
+    const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
+    const std::vector<int> moveShape = {batchSize, ImageSupervisedOutputs};
+    const std::vector<int> valueShape = {batchSize};
+    py::array_t<float> inputs(inputShape);
+    py::array_t<s32> moves(moveShape);
+    py::array_t<float> values(valueShape);
+    
+    std::ifstream ifs(teacherFileName.c_str(), std::ios::binary);
+    if (!ifs)
+        exit(EXIT_FAILURE);
+    const std::size_t fileSize = static_cast<std::size_t>(ifs.seekg(0, std::ios::end).tellg());
+    const s64 numPositions = fileSize / sizeof(HuffmanCodedPosAndEval); // 総局面数
+    if (!fileSize)
+        exit(EXIT_FAILURE);
+    ifs.seekg(0, std::ios_base::beg);
+    int icnt = 0, mcnt = 0;
+    for (int i = 0; i < batchSize; ++i) {
+        HuffmanCodedPosAndEval hcpe;
+        const int index = mt() % numPositions;
+        ifs.seekg(index * sizeof(HuffmanCodedPosAndEval), std::ios_base::beg);
+        ifs.read(reinterpret_cast<char*>(&hcpe), sizeof(hcpe));
+        // 学習データに変換
+        Position pos;
+        pos.set(hcpe.hcp, nullptr);
+        const Color myColor = pos.turn();
+        const Move move = move16toMove(static_cast<Move>(hcpe.bestMove16), pos);
+        const Score eval = static_cast<Score>(hcpe.eval);
+        
+        BoardImage image;
+        positionToImage(pos, myColor, image); // inputデータ作成
+        moveToFromTo(move, myColor, &image.from, &image.to); // outputデータ作成
+        
+        imageToInput(image, inputs.mutable_data() + icnt);
+        imageToMove(image.from, image.to, moves.mutable_data() + mcnt);
+        values.mutable_data()[i] = 2.0 / (1.0 + exp(-double(eval) / 600.0)) - 1.0;
+        
+        icnt += ImageFileNum * ImageRankNum * ImageInputPlains;
+        mcnt += ImageSupervisedOutputs;
+    }
+    
+    return std::make_tuple(inputs, moves, values);
+}
+
+/*auto gen_inputs_moves_values_results(const std::string& fileName, const int num){
+ // 勝敗情報も記録されたelmo形式から受け取る
+ py::array_t<double>
+ }*/
+
+PYBIND11_PLUGIN(nndata) {
+    py::module m("nndata", "data ganerator for neural network");
+    m.def("get_inputs_moves_values", &getInputsMovesValues,
+          "A function which returns inputs, moves and values");
+    //m.def("gen_inputs_moves_values_results", &gen_inputs_moves_values_results,
+    //      "A function which returns inputs, moves, values and results");
+    return m.ptr();
+}
