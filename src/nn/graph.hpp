@@ -79,6 +79,13 @@ Move getBestMove(const Position& pos, bool testMode = false){
     ExtMove moves[1024];
     const int n = generateMoves<LegalAll>(moves, pos) - moves;
     
+    if(!testMode){
+        if(n <= 0){
+            SYNCCOUT << "bestmove resign" << SYNCENDL;
+            return Move::moveNone();
+        }
+    }
+    
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
     auto otensors = forward(images, 1);
@@ -161,16 +168,11 @@ Move getBestMove(const Position& pos, bool testMode = false){
     }
     
     if(!testMode){
-        if(n <= 0){
-            int score = (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore);
-            SYNCCOUT << "info depth 0 score cp " << score <<  " pv resign" << SYNCENDL;
-            SYNCCOUT << "bestmove resign" << SYNCENDL;
-            return Move::moveNone();
-        }else{
-            int score = (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore);
-            SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
-            SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
-        }
+        const double clipValue = 0.000001;
+        double value = std::min(std::max(clipValue, (double)mat(ImageMoveOutputs)), 1 - clipValue);
+        int score = (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+        SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
+        SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
     }
     return bestMove;
 }
