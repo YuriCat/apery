@@ -34,14 +34,17 @@
 #include "init.hpp"
 
 // 以下NN関係
-#include "nn/def170405.hpp"
+//#include "nn/def170405.hpp"
+#include "nn/def170519.hpp"
 //#include "nn/input170405.hpp"
 //#include "nn/input170413.hpp"
 #include "nn/input170419.hpp"
 //#include "nn/move170405.hpp"
 //#include "nn/move170409.hpp"
 #include "nn/move170419.hpp"
+#ifndef NO_TF
 #include "nn/graph.hpp"
+#endif
 #ifdef LEARN
 #include "nn/datagen.hpp"
 #endif
@@ -192,9 +195,10 @@ void go(const Position& pos, std::istringstream& ssCmd) {
     limits.startTime.restart();
     
     // NN計算
+#ifndef NO_TF
     getBestMove(pos);
-
-    /*while (ssCmd >> token) {
+#else
+    while (ssCmd >> token) {
         if      (token == "ponder"     ) limits.ponder = true;
         else if (token == "btime"      ) ssCmd >> limits.time[Black];
         else if (token == "wtime"      ) ssCmd >> limits.time[White];
@@ -214,7 +218,8 @@ void go(const Position& pos, std::istringstream& ssCmd) {
         limits.moveTime -= pos.searcher()->options["Byoyomi_Margin"];
     else if (pos.searcher()->options["Time_Margin"] != 0)
         limits.time[pos.turn()] -= pos.searcher()->options["Time_Margin"];
-    pos.searcher()->threads.startThinking(pos, limits, pos.searcher()->states);*/
+    pos.searcher()->threads.startThinking(pos, limits, pos.searcher()->states);
+#endif
 }
 
 #if defined LEARN
@@ -1081,10 +1086,12 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
                 std::unique_ptr<Evaluator>(new Evaluator)->init(options["Eval_Dir"], true);
                 evalTableIsRead = true;
             }
+#ifndef NO_TF
             if (psession == nullptr){
                 // Tensorflowのセッション開始と計算グラフ読み込み
                 initializeGraph("./policy_graph.pb");
             }
+#endif
             SYNCCOUT << "readyok" << SYNCENDL;
         }
         else if (token == "setoption") setOption(ssCmd);
