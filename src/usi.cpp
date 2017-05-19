@@ -1186,7 +1186,7 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
 
 namespace py = pybind11;
 
-std::tuple<py::array_t<float>, py::array_t<s32>, py::array_t<float>>
+std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
     // (局面, 着手, 評価値)が記録されたApery形式から受け取る
     
@@ -1200,7 +1200,7 @@ getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
     const std::vector<int> moveShape = {batchSize, ImageSupervisedOutputs};
     const std::vector<int> valueShape = {batchSize};
     py::array_t<float> inputs(inputShape);
-    py::array_t<s32> moves(moveShape);
+    py::array_t<s64> moves(moveShape);
     py::array_t<float> values(valueShape);
     
     std::ifstream ifs(teacherFileName.c_str(), std::ios::binary);
