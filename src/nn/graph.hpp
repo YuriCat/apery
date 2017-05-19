@@ -169,7 +169,7 @@ Move getBestMove(const Position& pos, bool testMode = false){
     
     if(!testMode){
         const double clipValue = 0.000001;
-        double value = std::min(std::max(clipValue, (double)mat(ImageMoveOutputs)), 1 - clipValue);
+        double value = std::min(std::max(-1 + clipValue, (double)mat(ImageMoveOutputs)), 1 - clipValue);
         int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
         SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
         SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
