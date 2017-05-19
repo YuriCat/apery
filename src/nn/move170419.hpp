@@ -16,7 +16,7 @@ constexpr int ImageSupervisedFlags = 0;
 //constexpr int ImageSupervisedOutputs = ImageMoveOutputs + ImageSupervisedFlags;
 constexpr int ImageSupervisedOutputs = 2;
 
-void imageToMove(int from, int to, int *const p){
+void imageToMove(int from, int to, s64 *const p){
     //*(p + from) = 1;
     //*(p + ImageFromSize + to) = 1;
     // 配列形式で保存する必要性が無いので from と to を int で保存
