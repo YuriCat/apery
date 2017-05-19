@@ -34,8 +34,8 @@
 #include "init.hpp"
 
 // 以下NN関係
-//#include "nn/def170405.hpp"
-#include "nn/def170519.hpp"
+#include "nn/def170405.hpp"
+//#include "nn/def170519.hpp"
 //#include "nn/input170405.hpp"
 //#include "nn/input170413.hpp"
 #include "nn/input170419.hpp"
