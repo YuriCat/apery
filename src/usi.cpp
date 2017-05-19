@@ -194,10 +194,11 @@ void go(const Position& pos, std::istringstream& ssCmd) {
 
     limits.startTime.restart();
     
-    // NN計算
 #ifndef NO_TF
+    // NN計算
     getBestMove(pos);
 #else
+    // 探索
     while (ssCmd >> token) {
         if      (token == "ponder"     ) limits.ponder = true;
         else if (token == "btime"      ) ssCmd >> limits.time[Black];
@@ -1181,6 +1182,8 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
 }
 #endif
 
+#ifdef PYBIND11_PACKAGE
+
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
 
@@ -1252,3 +1255,5 @@ PYBIND11_PLUGIN(nndata) {
     //      "A function which returns inputs, moves, values and results");
     return m.ptr();
 }
+
+#endif

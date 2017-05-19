@@ -68,6 +68,7 @@ std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num
     //auto session_run_status = psession->Run({{"input:0", tensor}}, {"concat:0"}, {}, &otensors);
     //auto session_run_status = psession->Run({{"input:0", inputTensor}}, {"normalize/concat:0"}, {}, &otensors);
     std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"g/input", inputTensor}, {"g/is_training", phaseTensor}};
+    
     auto session_run_status = psession->Run(input, {"g/normalize/concat"}, {}, &otensors);
     //std::cerr << session_run_status << std::endl;
     return otensors;
@@ -114,6 +115,8 @@ Move getBestMove(const Position& pos, bool testMode = false){
      }
      }
      indexToMove(from, to);*/
+    
+    SYNCCOUT << "info depth 0 score cp " << (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore) << SYNCENDL;
     
     Move bestMove = Move::moveNone();
     if(!testMode && pos.gamePly() < 16){
