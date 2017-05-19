@@ -78,12 +78,6 @@ Move getBestMove(const Position& pos, bool testMode = false){
     // 状態 pos にて moves 内から最高点がついた行動を選ぶ
     ExtMove moves[1024];
     const int n = generateMoves<LegalAll>(moves, pos) - moves;
-    if(n <= 0){
-        if(!testMode){
-            SYNCCOUT << "bestmove resign" << SYNCENDL;
-        }
-        return Move::moveNone();
-    }
     
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
@@ -115,8 +109,6 @@ Move getBestMove(const Position& pos, bool testMode = false){
      }
      }
      indexToMove(from, to);*/
-    
-    SYNCCOUT << "info depth 0 score cp " << (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore) << SYNCENDL;
     
     Move bestMove = Move::moveNone();
     if(!testMode && pos.gamePly() < 16){
@@ -167,8 +159,18 @@ Move getBestMove(const Position& pos, bool testMode = false){
             }
         }
     }
+    
     if(!testMode){
-        SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
+        if(n <= 0){
+            int score = (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+            SYNCCOUT << "info depth 0 score cp " << score <<  " pv resign" << SYNCENDL;
+            SYNCCOUT << "bestmove resign" << SYNCENDL;
+            return Move::moveNone();
+        }else{
+            int score = (int)((-log((2.0 / (mat(ImageMoveOutputs) + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+            SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
+            SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
+        }
     }
     return bestMove;
 }
