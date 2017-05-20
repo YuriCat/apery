@@ -122,6 +122,10 @@ Move getBestMove(const Position& pos, bool testMode = false){
      }
      indexToMove(from, to);*/
     
+    const double clipValue = 0.0000001;
+    const double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
+    const int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+    
     Move bestMove = Move::moveNone();
     if(!testMode && pos.gamePly() < 16){
         // 序盤はランダム性を入れる
@@ -154,7 +158,7 @@ Move getBestMove(const Position& pos, bool testMode = false){
             }
         }
         bestMove = moves[j].move;
-    }else{
+    }else if(pos.gamePly() < 40 || std::abs(score) > 3000){
         float bestValue = -FLT_MAX;
         for(int i = 0; i < n; ++i){
             Move m = moves[i].move;
@@ -170,12 +174,28 @@ Move getBestMove(const Position& pos, bool testMode = false){
                 bestValue = val;
             }
         }
+    }else{
+        float bestValue = -FLT_MAX;
+        for(int i = 0; i < n; ++i){
+            Move m = moves[i].move;
+            int from, to;
+            moveToFromTo(m, pos.turn(), &from, &to);
+            float tval = mat(ImageFromSize + to);
+            float fval = mat(from);
+            float tval_pv = mat_pv(ImageFromSize + to);
+            float fval_pv = mat_pv(from);
+            float val = fval * tval * fval_pv * tval_pv;
+            //std::cerr << m.toUSI() << " " << from << " " << to << " " << val
+            //<< " (" << fval << ", " << tval << ")" << std::endl;
+            if(val > bestValue){
+                bestMove = m;
+                bestValue = val;
+            }
+        }
     }
     
     if(!testMode){
-        const double clipValue = 0.0000001;
-        double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
-        int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+        
         SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
         SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
     }
