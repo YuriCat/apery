@@ -1088,9 +1088,10 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
                 evalTableIsRead = true;
             }
 #ifndef NO_TF
-            if (psession == nullptr){
+            if (psession0 == nullptr){
                 // Tensorflowのセッション開始と計算グラフ読み込み
-                initializeGraph("./policy_graph.pb");
+                initializeGraph(&psession0, "./policy_graph.pb");
+                initializeGraph(&psession1, "./pv_graph.pb");
             }
 #endif
             SYNCCOUT << "readyok" << SYNCENDL;

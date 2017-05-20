@@ -11,30 +11,32 @@
 #include "tensorflow/core/util/command_line_flags.h"
 
 // 共有変数
-tensorflow::Session *psession = nullptr;
+tensorflow::Session *psession0 = nullptr, *psession1 = nullptr;
 
-tensorflow::Status LoadGraph(tensorflow::string graph_filename){
+tensorflow::Status LoadGraph(tensorflow::Session **const psession,
+                             const tensorflow::string& graph_filename){
     tensorflow::GraphDef graph_def;
     tensorflow::Status load_graph_status = ReadBinaryProto(tensorflow::Env::Default(), graph_filename, &graph_def);
     if(!load_graph_status.ok()) {
         return tensorflow::errors::NotFound("Failed to load compute graph at '",
                                             graph_filename, "'");
     }
-    psession = tensorflow::NewSession(tensorflow::SessionOptions());
-    tensorflow::Status session_create_status = psession->Create(graph_def);
+    *psession = tensorflow::NewSession(tensorflow::SessionOptions());
+    tensorflow::Status session_create_status = (*psession)->Create(graph_def);
     if(!session_create_status.ok()){
         return session_create_status;
     }
     return tensorflow::Status::OK();
 }
 
-int initializeGraph(const std::string& graph_filename){
+int initializeGraph(tensorflow::Session **const psession,
+                    const std::string& graph_filename){
     // NNの計算周りを初期化する
     // 起動時に1回だけ呼び出す
     char ***a = nullptr;
     tensorflow::port::InitMain("nn", 0, a);
     
-    auto load_graph_status = LoadGraph(graph_filename);
+    auto load_graph_status = LoadGraph(psession, graph_filename);
     if(!load_graph_status.ok()) {
         LOG(ERROR) << load_graph_status.error_message();
         return -1;
@@ -42,7 +44,8 @@ int initializeGraph(const std::string& graph_filename){
     return 0;
 }
 
-std::vector<tensorflow::Tensor> forward(const BoardImage images[], const int num){
+std::vector<tensorflow::Tensor> forward(tensorflow::Session *const psession,
+                                        const BoardImage images[], const int num){
     // 入力をTensor形式に変換
     auto inputTensor = tensorflow::Tensor(tensorflow::DT_FLOAT,
                                           tensorflow::TensorShape({num, ImageFileNum, ImageRankNum, ImageInputPlains}));
@@ -88,11 +91,13 @@ Move getBestMove(const Position& pos, bool testMode = false){
     
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
-    auto otensors = forward(images, 1);
+    auto otensors0 = forward(psession0, images, 1);
+    auto otensors1 = forward(psession1, images, 1);
     //std::cerr << "num of tensors = " << otensors.size() << std::endl;
     
     // Tensor型から通常の配列型に変換
-    auto mat = otensors[0].matrix<float>();
+    auto mat = otensors0[0].matrix<float>();
+    auto mat_pv = otensors1[0].matrix<float>();
     
     //std::cerr << typeid(mat).name() << std::endl;
     
@@ -168,8 +173,8 @@ Move getBestMove(const Position& pos, bool testMode = false){
     }
     
     if(!testMode){
-        const double clipValue = 0.000001;
-        double value = std::min(std::max(-1 + clipValue, (double)mat(ImageMoveOutputs)), 1 - clipValue);
+        const double clipValue = 0.0000001;
+        double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
         int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
         SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
         SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
@@ -182,7 +187,7 @@ void calcMoveProb(const Position& pos, const callback_t& callback){
     // 状態 pos にて moves 内 の行動集合に選択確率をつける
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
-    auto otensors = forward(images, 1);
+    auto otensors = forward(psession0, images, 1);
     //std::cerr << "num of tensors = " << otensors.size() << std::endl;
     
     // Tensor型から通常の配列型に変換
