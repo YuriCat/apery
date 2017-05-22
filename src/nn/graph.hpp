@@ -77,7 +77,7 @@ std::vector<tensorflow::Tensor> forward(tensorflow::Session *const psession,
     return otensors;
 }
 
-Move getBestMove(const Position& pos, bool testMode = false){
+ExtMove getBestMove(const Position& pos, bool testMode = false){
     // 状態 pos にて moves 内から最高点がついた行動を選ぶ
     ExtMove moves[1024];
     const int n = generateMoves<LegalAll>(moves, pos) - moves;
@@ -85,7 +85,7 @@ Move getBestMove(const Position& pos, bool testMode = false){
     if(!testMode){
         if(n <= 0){
             SYNCCOUT << "bestmove resign" << SYNCENDL;
-            return Move::moveNone();
+            return ExtMove(Move::moveNone(), -100000);
         }
     }
     
@@ -125,6 +125,9 @@ Move getBestMove(const Position& pos, bool testMode = false){
     const double clipValue = 0.0000001;
     const double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
     const int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+    
+    //const double pref = (pos.gamePly() <= 40) ? 1.0 : std::min(1.0, 40.0 / (pos.gamePly() - 40) - );
+    const double pref = (1 / (1 + (60 - pos.gamePly()) / 10.0)) * 0.9;
     
     Move bestMove = Move::moveNone();
     if(!testMode && pos.gamePly() < 16){
@@ -184,7 +187,19 @@ Move getBestMove(const Position& pos, bool testMode = false){
             float fval = mat(from);
             float tval_pv = mat_pv(ImageFromSize + to);
             float fval_pv = mat_pv(from);
+            
             float val = fval * tval * fval_pv * tval_pv;
+            
+            //float val = pos(fval * tval, 1 - pref) * pos(fval_pv * tval_pv, pref);
+            //float val = /*fval * tval */ fval_pv * tval_pv;
+            
+            //float val = fval * tval;
+            //float val_pv = fval_pv * tval_pv;
+            
+            //val = std::max(val, val_pv);
+            
+            //val = pow(val, 1 - pref) * pow(val_pv, pref);
+            
             //std::cerr << m.toUSI() << " " << from << " " << to << " " << val
             //<< " (" << fval << ", " << tval << ")" << std::endl;
             if(val > bestValue){
@@ -195,11 +210,87 @@ Move getBestMove(const Position& pos, bool testMode = false){
     }
     
     if(!testMode){
-        
         SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
         SYNCCOUT << "bestmove " << bestMove.toUSI() << SYNCENDL;
     }
-    return bestMove;
+    return ExtMove(bestMove, score);
+}
+
+std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta, int depth) {
+    //std::cerr << depth << std::endl;
+    if(depth <= 0){
+        ExtMove bestExtMove = getBestMove(pos, true);
+        std::vector<Move> pv = {bestExtMove.move};
+        return std::make_pair(pv, bestExtMove.score);
+    }else{
+        std::array<ExtMove, 1024> moves;
+        const int n = generateMoves<LegalAll>(moves.data(), pos) - moves.data();
+        BoardImage images[1];
+        positionToImage(pos, pos.turn(), images[0]);
+        auto otensors0 = forward(psession0, images, 1);
+        auto otensors1 = forward(psession1, images, 1);
+        auto mat = otensors0[0].matrix<float>();
+        auto mat_pv = otensors1[0].matrix<float>();
+        const double clipValue = 0.0000001;
+        const double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
+        const int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+        for(int i = 0; i < n; ++i){
+            Move m = moves[i].move;
+            int from, to;
+            moveToFromTo(m, pos.turn(), &from, &to);
+            float tval;
+            if(pos.gamePly() < 40 || std::abs(score) > 3000){
+                tval = mat(ImageFromSize + to) * mat(from);
+            }else{
+                tval = mat(ImageFromSize + to) * mat(from) * mat_pv(ImageFromSize + to) * mat_pv(from);
+            }
+            moves[i].score = tval * 10000;
+        }
+        std::sort(moves.begin(), moves.begin() + n, [](const ExtMove& a, const ExtMove& b)->bool{
+            return a.score > b.score;
+        });
+        // 上位k手だけ探索
+        std::vector<Move> pv = {Move::moveNone()};
+        std::pair<std::vector<Move>, s32> bestExtPv = std::make_pair(pv, alpha);
+        int bestScore = -100000;
+        for(int i = 0; i < std::min(n, 4); ++i){
+            StateInfo si;
+            pos.doMove(moves[i].move, si);
+            std::pair<std::vector<Move>, s32> extPv = searchMove(pos, -beta, -alpha, depth - 1);
+            //moves[i].score = -extPv.second;
+            std::cerr << moves[i].move.toUSI() << " pol: " << moves[i].score / 100.0 << "% eval:" << -extPv.second << std::endl;
+            int tscore = moves[i].score + 1 / (1 + exp(extPv.second / 600.0)) * 60000;
+            if(tscore > bestScore){
+                bestScore = tscore;
+                extPv.first.push_back(moves[i].move);
+                bestExtPv = std::make_pair(extPv.first, (score - extPv.second * depth) / (depth + 1));
+            }
+            pos.undoMove(moves[i].move);
+        }
+        return bestExtPv;
+    }
+}
+
+std::string toPvString(const std::vector<Move>& pv){
+    std::ostringstream oss;
+    for(int i = (int)pv.size() - 1; i >= 0; --i){
+        if(pv[i]){
+            oss << " " << pv[i].toUSI();
+        }
+    }
+    return oss.str();
+}
+
+std::pair<std::vector<Move>, s32> getBestSearchMove(Position& pos){
+    std::pair<std::vector<Move>, s32> bestExtPv = searchMove(pos, -100000, 100000, 1);
+    std::cerr << bestExtPv.second << std::endl;
+    if(bestExtPv.second <= -100000){
+        SYNCCOUT << "bestmove resign" << SYNCENDL;
+    }else{
+        SYNCCOUT << "info depth " << (bestExtPv.first.size() - 1) << " score cp " << bestExtPv.second <<  " pv" << toPvString(bestExtPv.first) << SYNCENDL;
+        SYNCCOUT << "bestmove " << bestExtPv.first.back().toUSI() << SYNCENDL;
+    }
+    return bestExtPv;
 }
 
 template<class callback_t>

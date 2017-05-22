@@ -179,6 +179,14 @@ struct HuffmanCodedPosAndEval {
 };
 static_assert(sizeof(HuffmanCodedPosAndEval) == 36, "");
 
+struct HuffmanCodedPosAndEvalResult {
+    HuffmanCodedPos hcp;
+    s16 eval;
+    u16 bestMove16; // 使うかは分からないが教師データ生成時についでに取得しておく。
+    s16 result; // elmo形式
+};
+static_assert(sizeof(HuffmanCodedPosAndEvalResult) == 38, "");
+
 class Move;
 struct Thread;
 struct Searcher;

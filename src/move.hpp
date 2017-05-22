@@ -176,6 +176,11 @@ inline Move makeDropMove(const PieceType pt, const Square to) { return from2Move
 struct ExtMove {
     Move move;
     int score;
+    
+    ExtMove():
+    move(), score(){}
+    ExtMove(Move amove, int ascore):
+    move(amove), score(ascore){}
 };
 
 // insertionSort() や std::sort() で必要
