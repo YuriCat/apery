@@ -238,6 +238,7 @@ std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta,
         const double clipValue = 0.0000001;
         const double value = std::min(std::max(-1 + clipValue, (double)mat_pv(ImageMoveOutputs)), 1 - clipValue);
         const int score = (int)((-log((2.0 / (value + 1.0)) - 1.0) * 600) * 100 / PawnScore);
+        double scoreSum = 0;
         for(int i = 0; i < n; ++i){
             Move m = moves[i].move;
             int from, to;
@@ -249,6 +250,11 @@ std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta,
                 tval = mat(ImageFromSize + to) * mat(from) * mat_pv(ImageFromSize + to) * mat_pv(from);
             }
             moves[i].score = tval * 10000;
+            scoreSum += tval;
+        }
+        // 確率正規化
+        for(int i = 0; i < n; ++i){
+            moves[i].score /= scoreSum;
         }
         std::sort(moves.begin(), moves.begin() + n, [](const ExtMove& a, const ExtMove& b)->bool{
             return a.score > b.score;
