@@ -221,7 +221,11 @@ std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta,
     if(depth <= 0){
         ExtMove bestExtMove = getBestMove(pos, true);
         std::vector<Move> pv = {bestExtMove.move};
-        return std::make_pair(pv, bestExtMove.score);
+        if(!bestExtMove.move){
+            return std::make_pair(pv, -100000);
+        }else{
+            return std::make_pair(pv, bestExtMove.score);
+        }
     }else{
         std::array<ExtMove, 1024> moves;
         const int n = generateMoves<LegalAll>(moves.data(), pos) - moves.data();
@@ -253,16 +257,19 @@ std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta,
         std::vector<Move> pv = {Move::moveNone()};
         std::pair<std::vector<Move>, s32> bestExtPv = std::make_pair(pv, alpha);
         int bestScore = -100000;
-        for(int i = 0; i < std::min(n, 4); ++i){
+        for(int i = 0; i < std::min(n, 6); ++i){
             StateInfo si;
             pos.doMove(moves[i].move, si);
             std::pair<std::vector<Move>, s32> extPv = searchMove(pos, -beta, -alpha, depth - 1);
             //moves[i].score = -extPv.second;
             std::cerr << moves[i].move.toUSI() << " pol: " << moves[i].score / 100.0 << "% eval:" << -extPv.second << std::endl;
-            int tscore = moves[i].score + 1 / (1 + exp(extPv.second / 600.0)) * 60000;
+            int tscore = moves[i].score + 1 / (1 + exp(extPv.second / 600.0)) * 80000;
             if(tscore > bestScore){
                 bestScore = tscore;
                 extPv.first.push_back(moves[i].move);
+                if(extPv.second < -90000){ // 詰み
+                    return std::make_pair(extPv.first, -extPv.second);
+                }
                 bestExtPv = std::make_pair(extPv.first, (score - extPv.second * depth) / (depth + 1));
             }
             pos.undoMove(moves[i].move);
@@ -288,6 +295,7 @@ std::pair<std::vector<Move>, s32> getBestSearchMove(Position& pos){
         SYNCCOUT << "bestmove resign" << SYNCENDL;
     }else{
         SYNCCOUT << "info depth " << (bestExtPv.first.size() - 1) << " score cp " << bestExtPv.second <<  " pv" << toPvString(bestExtPv.first) << SYNCENDL;
+        std::cerr << "bestmove " << bestExtPv.first.back().toUSI() << std::endl;
         SYNCCOUT << "bestmove " << bestExtPv.first.back().toUSI() << SYNCENDL;
     }
     return bestExtPv;
