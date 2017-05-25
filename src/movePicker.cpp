@@ -23,6 +23,8 @@
 #include "generateMoves.hpp"
 #include "thread.hpp"
 
+//#include "nn/graph.hpp"
+
 MovePicker::MovePicker(const Position& pos, const Move ttm, const Score th) : pos_(pos), threshold_(th) {
     assert(!pos.inCheck());
     moves_[0].score = std::numeric_limits<std::underlying_type<Score>::type>::max(); // 番兵のセット
@@ -68,7 +70,7 @@ MovePicker::MovePicker(const Position& pos, const Move ttm, const Depth depth, S
     stage_ += (ttMove_ == Move::moveNone());
 }
 
-Move MovePicker::nextMove() {
+Move MovePicker::nextMove(/*double *const pprob*/) {
     Move move;
     switch (stage_) {
     case MainSearch: case EvasionSearch:
@@ -228,6 +230,30 @@ Move MovePicker::nextMove() {
             return move;
         }
         break;
+    case ProbCalc:{
+        endMoves_ = generateMoves<Legal>(cur_, pos_);
+        // 着手確率を計算
+        /*calcMoveProb(pos_, [this](auto& mat)->void{
+            float prob[600];
+            float probSum = 0;
+            for (ExtMove* it = cur_; it != endMoves_; ++it) {
+                Move m = it->move;
+                int from, to;
+                moveToFromTo(m, pos_.turn(), &from, &to);
+                float tval = mat(ImageFromSize + to);
+                float fval = mat(from);
+                float val = fval * tval;
+                prob[it - cur_] = val;
+                probSum += val;
+            }
+            for (ExtMove* it = cur_; it != endMoves_; ++it) {
+                // 正規化して代入
+                it->score = static_cast<int>(double(1 << 30) * prob[it - cur_] / probSum);
+            }
+        });*/
+        
+        //std::sort()
+    }
     default: UNREACHABLE;
     }
     return Move::moveNone();

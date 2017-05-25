@@ -46,7 +46,7 @@
 #include "nn/graph.hpp"
 #endif
 #ifdef LEARN
-#include "nn/datagen.hpp"
+//#include "nn/datagen.hpp"
 #endif
 
 namespace {
@@ -448,19 +448,23 @@ void make_teacher(std::istringstream& ssCmd) {
                     break;
                 pos.searcher()->alpha = -ScoreMaxEvaluate;
                 pos.searcher()->beta  =  ScoreMaxEvaluate;
-                go(pos, static_cast<Depth>(6));
+                go(pos, static_cast<Depth>(15));
                 const Score score = pos.searcher()->threads.main()->rootMoves[0].score;
                 const Move bestMove = pos.searcher()->threads.main()->rootMoves[0].pv[0];
-                if (3000 < abs(score)) // 差が付いたので投了した事にする。
-                    break;
-                else if (!bestMove) // 勝ち宣言など
+                //if (3000 < abs(score)) // 差が付いたので投了した事にする。
+                //    break;
+                //else
+                if (!bestMove) // 勝ち宣言など
                     break;
 
-                {
-                    HuffmanCodedPosAndEval hcpe;
-                    hcpe.hcp = pos.toHuffmanCodedPos();
-                    auto& pv = pos.searcher()->threads.main()->rootMoves[0].pv;
-                    const Color rootTurn = pos.turn();
+                HuffmanCodedPosAndEval hcpe;
+                hcpe.hcp = pos.toHuffmanCodedPos();
+                auto& pv = pos.searcher()->threads.main()->rootMoves[0].pv;
+                hcpe.bestMove16 = static_cast<u16>(pv[0].value());
+                const Color rootTurn = pos.turn();
+                if (abs(score) > 30000) {
+                    hcpe.eval = score;
+                } else {
                     StateInfo state[MaxPly+7];
                     StateInfo* st = state;
                     for (size_t i = 0; i < pv.size(); ++i)
@@ -471,14 +475,14 @@ void make_teacher(std::istringstream& ssCmd) {
                     const Score eval = evaluate(pos, ss+1);
                     // root の手番から見た評価値に直す。
                     hcpe.eval = (rootTurn == pos.turn() ? eval : -eval);
-                    hcpe.bestMove16 = static_cast<u16>(pv[0].value());
+                    
+                    std::cerr << score << " " << hcpe.eval << std::endl;
 
                     for (size_t i = pv.size(); i > 0;)
                         pos.undoMove(pv[--i]);
-
-                    std::unique_lock<Mutex> lock(omutex);
-                    ofs.write(reinterpret_cast<char*>(&hcpe), sizeof(hcpe));
                 }
+                std::unique_lock<Mutex> lock(omutex);
+                ofs.write(reinterpret_cast<char*>(&hcpe), sizeof(hcpe));
 
                 states->push_back(StateInfo());
                 pos.doMove(bestMove, states->back());
@@ -1178,7 +1182,7 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
     if(testMode){
         calcAccuracy(psearcher, csaFilePath);
     }else{
-        genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
+        //genPolicyTeacher(psearcher, csaFilePath, outputDir, threads);
     }
     
     return 0;

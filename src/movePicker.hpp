@@ -34,7 +34,8 @@ enum Stages {
     QSearchWithChecks, QCaptures1Init, QCaptures1, QChecks,
 #endif
     QSearchNoChecks, QCaptures2Init, QCaptures2,
-    QSearchRecaptures, QRecaptures
+    QSearchRecaptures, QRecaptures,
+    ProbCalc, // 着手確率を計算する
 };
 OverloadEnumOperators(Stages);
 
@@ -47,7 +48,7 @@ public:
     MovePicker(const Position& pos, const Move ttm, const Depth depth, const Square sq);
     MovePicker(const Position& pos, const Move ttm, const Depth depth, SearchStack* searchStack);
 
-    Move nextMove();
+    Move nextMove(/*double *const pprob*/);
 
 private:
     void scoreCaptures();

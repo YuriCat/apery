@@ -216,6 +216,8 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
     return ExtMove(bestMove, score);
 }
 
+const std::vector<int> searchWidth = {1, 2, 4};
+
 std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta, int depth) {
     //std::cerr << depth << std::endl;
     if(depth <= 0){
@@ -263,21 +265,23 @@ std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta,
         std::vector<Move> pv = {Move::moveNone()};
         std::pair<std::vector<Move>, s32> bestExtPv = std::make_pair(pv, alpha);
         int bestScore = -100000;
-        for(int i = 0; i < std::min(n, 6); ++i){
+        for(int i = 0; i < std::min(n, searchWidth[depth]); ++i){
             StateInfo si;
             pos.doMove(moves[i].move, si);
             std::pair<std::vector<Move>, s32> extPv = searchMove(pos, -beta, -alpha, depth - 1);
-            //moves[i].score = -extPv.second;
-            std::cerr << moves[i].move.toUSI() << " pol: " << moves[i].score / 100.0 << "% eval:" << -extPv.second << std::endl;
-            int tscore = moves[i].score + 1 / (1 + exp(extPv.second / 600.0)) * 80000;
+            const int eval = -extPv.second;
+            std::cerr << std::string(3 - depth, ' ') << moves[i].move.toUSI() << " pol: " << moves[i].score / 100.0 << "% eval:" << eval << std::endl;
+            int tscore = moves[i].score + 1 / (1 + exp(-eval / 600.0)) * 80000;
             if(tscore > bestScore){
                 bestScore = tscore;
                 extPv.first.push_back(moves[i].move);
-                if(extPv.second < -90000){ // 詰み
-                    return std::make_pair(extPv.first, -extPv.second);
+                if(eval >= 90000){ // 詰み
+                    pos.undoMove(moves[i].move);
+                    return std::make_pair(extPv.first, eval);
                 }
-                bestExtPv = std::make_pair(extPv.first, (score - extPv.second * depth) / (depth + 1));
+                bestExtPv = std::make_pair(extPv.first, (score + eval * depth) / (depth + 1));
             }
+            alpha = std::max((score + eval * depth) / (depth + 1), alpha);
             pos.undoMove(moves[i].move);
         }
         return bestExtPv;
@@ -295,7 +299,7 @@ std::string toPvString(const std::vector<Move>& pv){
 }
 
 std::pair<std::vector<Move>, s32> getBestSearchMove(Position& pos){
-    std::pair<std::vector<Move>, s32> bestExtPv = searchMove(pos, -100000, 100000, 1);
+    std::pair<std::vector<Move>, s32> bestExtPv = searchMove(pos, -100000, 100000, 2);
     std::cerr << bestExtPv.second << std::endl;
     if(bestExtPv.second <= -100000){
         SYNCCOUT << "bestmove resign" << SYNCENDL;
@@ -374,9 +378,9 @@ void calcAccuracy(Searcher *const psearcher,
     
     plearner->readBook(pos, ipath, "-", "-", "-", 0);
     
-    if (psession == nullptr){
+    if (psession0 == nullptr){
         // Tensorflowのセッション開始と計算グラフ読み込み
-        initializeGraph("./policy_graph.pb");
+        initializeGraph(&psession0, "./policy_graph.pb");
     }
     
     u64 positionSum = 0;
@@ -420,7 +424,7 @@ void calcAccuracy(Searcher *const psearcher,
             const Position& tpos = std::get<0>(positions[index]);
             const Move move = std::get<1>(positions[index]);
             const int ply = std::get<2>(positions[index]);
-            Move tmove = getBestMove(tpos, true);
+            Move tmove = getBestMove(tpos, true).move;
             int phase = std::min(5, ply / 30);
             if(move == tmove){
                 okCnt += 1;
@@ -450,7 +454,7 @@ void calcAccuracy(Searcher *const psearcher,
             const Position& tpos = std::get<0>(positions[index]);
             const Move move = std::get<1>(positions[index]);
             const int ply = std::get<2>(positions[index]);
-            Move tmove = getBestMove(tpos, true);
+            Move tmove = getBestMove(tpos, true).move;
             int phase = std::min(5, ply / 30);
             if(move == tmove){
                 okCnt += 1;
