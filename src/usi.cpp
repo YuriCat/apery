@@ -1228,13 +1228,13 @@ getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
         ifs.read(reinterpret_cast<char*>(&hcpe), sizeof(hcpe));
         // 学習データに変換
         Position pos;
-        const Color myColor = pos.turn();
         const Move move16 = static_cast<Move>(hcpe.bestMove16);
         const Score eval = static_cast<Score>(hcpe.eval);
         if(!pos.set(hcpe.hcp, nullptr)){
             i -= 1;
             std::cerr << move16.toUSI() << " " << hcpe.eval << "(" << index << " / " << numPositions << ")" << std::endl;
         }
+        const Color myColor = pos.turn();
         const Move move = move16toMove(move16, pos);
         
         BoardImage image;
