@@ -391,7 +391,7 @@ void calcAccuracy(Searcher *const psearcher,
     // データを読む順番を決定
     std::vector<int> order;
     order.reserve(positionSum);
-    for(int i = 0; i < positionSum; ++i){
+    for(int i = 0; i < (int)positionSum; ++i){
         order.push_back(i);
     }
     std::shuffle(order.begin(), order.end(), mt);

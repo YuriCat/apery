@@ -49,6 +49,100 @@
 //#include "nn/datagen.hpp"
 #endif
 
+void csaToHcpr(const std::string& inputPath, const std::string& outputPath, Position& pos) {
+    // 棋譜ファイル (CSA) を受け取って各局面を .hcpr 形式で保存する
+    std::cerr << "input: " << inputPath << std::endl;
+    std::cerr << "output: " << outputPath << std::endl;
+    Learner *plearner = new Learner();
+    plearner->readBook(pos, inputPath, "-", "-", "-", 0);
+    Mutex omutex;
+    std::ofstream ofs(outputPath.c_str(), std::ios::binary);
+    if (!ofs) {
+        std::cerr << "Error: cannot open " << outputPath << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    for(auto& game : plearner->bookMovesDatum_){
+        pos.set(DefaultStartPositionSFEN, pos.searcher()->threads.main());
+        std::deque<StateInfo> siv;
+        for(auto& bm : game){
+            const Color myColor = pos.turn();
+            const Move move = bm.move;
+            HuffmanCodedPosAndResult hcpr;
+            hcpr.hcp = pos.toHuffmanCodedPos();
+            hcpr.bestMove16 = static_cast<u16>(move.value());
+            hcpr.result = bm.winner ? 32600 : -32600;
+            std::unique_lock<Mutex> lock(omutex);
+            ofs.write(reinterpret_cast<char*>(&hcpr), sizeof(hcpr));
+            siv.push_back(StateInfo());
+            pos.doMove(move, siv.back());
+        }
+    }
+}
+
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::vector<std::string> elems;
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) {
+        if (!item.empty()) {
+            elems.push_back(item);
+        }
+    }
+    return elems;
+}
+
+void usiToHcpr(const std::string& inputPath, const std::string& outputPath, Position& pos) {
+    // 棋譜ファイル (USI) を受け取って各局面を .hcpr 形式で保存する
+    std::string line;
+    Mutex omutex;
+    std::ifstream ifs(inputPath);
+    if (!ifs) {
+        std::cerr << "Error: cannot open " << inputPath << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    std::ofstream ofs(outputPath.c_str(), std::ios::binary);
+    if (!ofs) {
+        std::cerr << "Error: cannot open " << outputPath << std::endl;
+        exit(EXIT_FAILURE);
+    }
+    while (ofs) {
+        std::getline(ifs, line);
+        std::vector<std::string> usis = split(line, ' ');
+        // usi読み取り、試合勝敗を判定 (ルール違反はないと仮定する)
+        std::unordered_set<Key> keyHash;
+        std::vector<Move> moves;
+        std::deque<StateInfo> siv;
+        s32 result = -32600; // 勝側が最後の手のはず
+        pos.set(DefaultStartPositionSFEN, pos.searcher()->threads.main());
+        for (const std::string& usi : usis) {
+            const Key key = pos.getKey();
+            if (keyHash.count(key) < 4) {
+                keyHash.insert(key);
+            } else { // 千日手
+                result = -128;
+                break;
+            }
+            Move move = usiToMove(pos, usi);
+            result *= -1;
+            siv.push_back(StateInfo());
+            pos.doMove(move, siv.back());
+            moves.push_back(move);
+        }
+        // データ保存
+        pos.set(DefaultStartPositionSFEN, pos.searcher()->threads.main());
+        for (Move move : moves) {
+            HuffmanCodedPosAndResult hcpr;
+            hcpr.hcp = pos.toHuffmanCodedPos();
+            hcpr.bestMove16 = static_cast<u16>(move.value());
+            hcpr.result = result;
+            std::unique_lock<Mutex> lock(omutex);
+            ofs.write(reinterpret_cast<char*>(&hcpr), sizeof(hcpr));
+            siv.push_back(StateInfo());
+            pos.doMove(move, siv.back());
+        }
+    }
+}
+
 namespace {
     void onThreads(Searcher* s, const USIOption&)      { s->threads.readUSIOptions(s); }
     void onHashSize(Searcher* s, const USIOption& opt) { s->tt.resize(opt); }
@@ -1130,6 +1224,16 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
         else if (token == "check_teacher") {
             check_teacher(ssCmd);
         }
+        else if (token == "csa2hcpr") {
+            std::string inputPath, outputPath;
+            ssCmd >> inputPath >> outputPath;
+            csaToHcpr(inputPath, outputPath, pos);
+        }
+        else if (token == "usi2hcpr") {
+            std::string inputPath, outputPath;
+            ssCmd >> inputPath >> outputPath;
+            usiToHcpr(inputPath, outputPath, pos);
+        }
         else if (token == "print"    ) printEvalTable(SQ88, f_gold + SQ78, f_gold, false);
 #endif
 #if !defined MINIMUL
@@ -1196,16 +1300,23 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
 
 namespace py = pybind11;
 
+std::mt19937 mt;
+
+struct PackageInitializer{
+    PackageInitializer(){
+        initTable();
+        Position::initZobrist();
+        HuffmanCodedPos::init();
+        std::random_device seed;
+        mt.seed(seed() ^ (unsigned int)time(NULL));
+    }
+};
+
+PackageInitializer _packageInitializer;
+
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
     // (局面, 着手, 評価値)が記録されたApery形式から受け取る
-    
-    std::random_device seed;
-    std::mt19937 mt(seed() ^ (unsigned int)time(NULL));
-    initTable();
-    Position::initZobrist();
-    HuffmanCodedPos::init();
-    
     const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
     const std::vector<int> moveShape = {batchSize, ImageSupervisedOutputs};
     const std::vector<int> valueShape = {batchSize};

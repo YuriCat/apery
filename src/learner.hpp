@@ -452,6 +452,7 @@ public:
             }
             else
                 bmd.useLearning = false;
+            bmd.winner = bmdBase[pos.turn()].winner;
 
             bmds.back().emplace_back(bmd);
             s1.erase(0, 6);
