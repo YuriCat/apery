@@ -181,8 +181,8 @@ static_assert(sizeof(HuffmanCodedPosAndEval) == 36, "");
 
 struct HuffmanCodedPosAndResult {
     HuffmanCodedPos hcp;
-    u16 bestMove16; // 使うかは分からないが教師データ生成時についでに取得しておく。
     s16 result; // elmo形式
+    u16 bestMove16; // 使うかは分からないが教師データ生成時についでに取得しておく。
 };
 static_assert(sizeof(HuffmanCodedPosAndResult) == 36, "");
 

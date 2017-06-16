@@ -34,8 +34,8 @@
 #include "init.hpp"
 
 // 以下NN関係
-#include "nn/def170405.hpp"
-//#include "nn/def170519.hpp"
+//#include "nn/def170405.hpp"
+#include "nn/def170519.hpp"
 //#include "nn/input170405.hpp"
 //#include "nn/input170413.hpp"
 #include "nn/input170419.hpp"
@@ -48,6 +48,8 @@
 #ifdef LEARN
 //#include "nn/datagen.hpp"
 #endif
+
+#ifdef LEARN
 
 void csaToHcpr(const std::string& inputPath, const std::string& outputPath, Position& pos) {
     // 棋譜ファイル (CSA) を受け取って各局面を .hcpr 形式で保存する
@@ -105,7 +107,8 @@ void usiToHcpr(const std::string& inputPath, const std::string& outputPath, Posi
         std::cerr << "Error: cannot open " << outputPath << std::endl;
         exit(EXIT_FAILURE);
     }
-    while (ofs) {
+    int games = 0;
+    while (ifs) {
         std::getline(ifs, line);
         std::vector<std::string> usis = split(line, ' ');
         // usi読み取り、試合勝敗を判定 (ルール違反はないと仮定する)
@@ -114,7 +117,9 @@ void usiToHcpr(const std::string& inputPath, const std::string& outputPath, Posi
         std::deque<StateInfo> siv;
         s32 result = -32600; // 勝側が最後の手のはず
         pos.set(DefaultStartPositionSFEN, pos.searcher()->threads.main());
-        for (const std::string& usi : usis) {
+        for (int i = 3; i < (int)usis.size(); ++i) {
+            const std::string& usi = usis[i];
+            if (usi.size() == 0)continue;
             const Key key = pos.getKey();
             if (keyHash.count(key) < 4) {
                 keyHash.insert(key);
@@ -123,6 +128,8 @@ void usiToHcpr(const std::string& inputPath, const std::string& outputPath, Posi
                 break;
             }
             Move move = usiToMove(pos, usi);
+            if (!move)break;
+            //std::cerr << usi << "->" << move.toUSI() << " ";
             result *= -1;
             siv.push_back(StateInfo());
             pos.doMove(move, siv.back());
@@ -134,14 +141,23 @@ void usiToHcpr(const std::string& inputPath, const std::string& outputPath, Posi
             HuffmanCodedPosAndResult hcpr;
             hcpr.hcp = pos.toHuffmanCodedPos();
             hcpr.bestMove16 = static_cast<u16>(move.value());
-            hcpr.result = result;
+            //std::cerr << move.toUSI() << " ";
+            hcpr.result = (pos.turn() == Black) ? result : -result;
+            //std::cerr << hcpr.bestMove16 << "," << hcpr.result << " ";
             std::unique_lock<Mutex> lock(omutex);
             ofs.write(reinterpret_cast<char*>(&hcpr), sizeof(hcpr));
             siv.push_back(StateInfo());
             pos.doMove(move, siv.back());
         }
+        //std::cerr << std::endl;
+        ++games;
+        if(games % 10000 == 0){
+            std::cerr << games << " games." << std::endl;
+        }
     }
 }
+
+#endif
 
 namespace {
     void onThreads(Searcher* s, const USIOption&)      { s->threads.readUSIOptions(s); }
@@ -290,9 +306,9 @@ void go(const Position& pos, std::istringstream& ssCmd) {
     
 #ifndef NO_TF
     // NN計算
-    //getBestMove(pos);
-    Position tpos = pos;
-    getBestSearchMove(tpos);
+    getBestMove(pos);
+    //Position tpos = pos;
+    //getBestSearchMove(tpos);
 #else
     // 探索
     while (ssCmd >> token) {
@@ -1312,10 +1328,11 @@ struct PackageInitializer{
     }
 };
 
-PackageInitializer _packageInitializer;
+//PackageInitializer _packageInitializer;
 
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
+    PackageInitializer _packageInitializer;
     // (局面, 着手, 評価値)が記録されたApery形式から受け取る
     const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
     const std::vector<int> moveShape = {batchSize, ImageSupervisedOutputs};

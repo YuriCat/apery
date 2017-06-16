@@ -91,12 +91,12 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
     
     BoardImage images[1];
     positionToImage(pos, pos.turn(), images[0]);
-    auto otensors0 = forward(psession0, images, 1);
+    //auto otensors0 = forward(psession0, images, 1);
     auto otensors1 = forward(psession1, images, 1);
     //std::cerr << "num of tensors = " << otensors.size() << std::endl;
     
     // Tensor型から通常の配列型に変換
-    auto mat = otensors0[0].matrix<float>();
+    //auto mat = otensors0[0].matrix<float>();
     auto mat_pv = otensors1[0].matrix<float>();
     
     //std::cerr << typeid(mat).name() << std::endl;
@@ -139,8 +139,8 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
             Move m = moves[i].move;
             int from, to;
             moveToFromTo(m, pos.turn(), &from, &to);
-            float tval = mat(ImageFromSize + to);
-            float fval = mat(from);
+            float tval = mat_pv(ImageFromSize + to);
+            float fval = mat_pv(from);
             float val = fval * tval;
             if(val <= 0){
                 score[i] = 0;
@@ -161,14 +161,14 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
             }
         }
         bestMove = moves[j].move;
-    }else if(pos.gamePly() < 40 || std::abs(score) > 3000){
+    }else/* if(1 || pos.gamePly() < 40 || std::abs(score) > 3000)*/{
         float bestValue = -FLT_MAX;
         for(int i = 0; i < n; ++i){
             Move m = moves[i].move;
             int from, to;
             moveToFromTo(m, pos.turn(), &from, &to);
-            float tval = mat(ImageFromSize + to);
-            float fval = mat(from);
+            float tval = mat_pv(ImageFromSize + to);
+            float fval = mat_pv(from);
             float val = fval * tval;
             //std::cerr << m.toUSI() << " " << from << " " << to << " " << val
             //<< " (" << fval << ", " << tval << ")" << std::endl;
@@ -177,7 +177,7 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
                 bestValue = val;
             }
         }
-    }else{
+    }/*else{
         float bestValue = -FLT_MAX;
         for(int i = 0; i < n; ++i){
             Move m = moves[i].move;
@@ -191,7 +191,7 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
             float val = fval * tval * fval_pv * tval_pv;
             
             //float val = pos(fval * tval, 1 - pref) * pos(fval_pv * tval_pv, pref);
-            //float val = /*fval * tval */ fval_pv * tval_pv;
+            //float val = fval_pv * tval_pv;
             
             //float val = fval * tval;
             //float val_pv = fval_pv * tval_pv;
@@ -207,7 +207,7 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
                 bestValue = val;
             }
         }
-    }
+    }*/
     
     if(!testMode){
         SYNCCOUT << "info depth 0 score cp " << score <<  " pv " << bestMove.toUSI() << SYNCENDL;
