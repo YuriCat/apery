@@ -306,9 +306,9 @@ void go(const Position& pos, std::istringstream& ssCmd) {
     
 #ifndef NO_TF
     // NN計算
-    getBestMove(pos);
-    //Position tpos = pos;
-    //getBestSearchMove(tpos);
+    //getBestMove(pos);
+    Position tpos = pos;
+    getBestSearchMove(tpos);
 #else
     // 探索
     while (ssCmd >> token) {
@@ -1206,8 +1206,8 @@ void Searcher::doUSICommandLoop(int argc, char* argv[]) {
 #ifndef NO_TF
             if (psession0 == nullptr){
                 // Tensorflowのセッション開始と計算グラフ読み込み
-                initializeGraph(&psession0, "./policy_graph.pb");
-                initializeGraph(&psession1, "./pv_graph.pb");
+                //initializeGraph(&psession0, "./policy_graph.pb");
+                initializeGraph(&psession0, "./pv_graph.pb");
             }
 #endif
             SYNCCOUT << "readyok" << SYNCENDL;
