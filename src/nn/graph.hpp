@@ -22,6 +22,8 @@ tensorflow::Status LoadGraph(tensorflow::Session **const psession,
         return tensorflow::errors::NotFound("Failed to load compute graph at '",
                                             graph_filename, "'");
     }
+    std::cerr << load_graph_status.ToString() << std::endl;
+    //std::cerr << graph_def << std::endl;
     *psession = tensorflow::NewSession(tensorflow::SessionOptions());
     tensorflow::Status session_create_status = (*psession)->Create(graph_def);
     if(!session_create_status.ok()){
@@ -47,6 +49,7 @@ int initializeGraph(tensorflow::Session **const psession,
 
 std::vector<tensorflow::Tensor> forward(tensorflow::Session *const psession,
                                         const BoardImage images[], const int num){
+    
     // 入力をTensor形式に変換
     auto inputTensor = tensorflow::Tensor(tensorflow::DT_FLOAT,
                                           tensorflow::TensorShape({num, ImageFileNum, ImageRankNum, ImageInputPlains}));
@@ -74,9 +77,26 @@ std::vector<tensorflow::Tensor> forward(tensorflow::Session *const psession,
     std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"g/input", inputTensor}, {"g/is_training", phaseTensor}};
     
     auto session_run_status = psession->Run(input, {"g/normalize/concat"}, {}, &otensors);
-    //std::cerr << session_run_status << std::endl;
+    std::cerr << session_run_status << std::endl;
     return otensors;
 }
+
+std::vector<double> getValue(const Position *pos, int num){
+    std::vector<BoardImage> images(num);
+    for(int i = 0; i < num; ++i)
+        positionToImage(pos[i], pos[i].turn(), images[i]);
+    auto otensors = forward(psession0, images.data(), num);
+    // Tensor型から通常の配列型に変換
+    auto mat_pv = otensors[0].matrix<float>();
+    std::vector<double> v;
+    v.resize(num);
+    for(int i = 0; i < num; ++i){
+        const double rate = (double)mat_pv((ImageMoveOutputs + 1) * i + ImageMoveOutputs);
+        v[i] = (rate + 1) / 2;
+    }
+    return v;
+}
+
 
 ExtMove getBestMove(const Position& pos, bool testMode = false){
     // 状態 pos にて moves 内から最高点がついた行動を選ぶ
@@ -90,13 +110,16 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
         }
     }
     
-    BoardImage images[1];
+    BoardImage images[2];
     positionToImage(pos, pos.turn(), images[0]);
-    auto otensors = forward(psession0, images, 1);
-    //std::cerr << "num of tensors = " << otensors.size() << std::endl;
+    positionToImage(pos, pos.turn(), images[1]);
+    auto otensors = forward(psession0, images, 2);
+    std::cerr << "num of tensors = " << otensors.size() << std::endl;
     
     // Tensor型から通常の配列型に変換
     auto mat_pv = otensors[0].matrix<float>();
+    
+    std::cerr << (double)mat_pv(ImageMoveOutputs + 1) << std::endl;
     
     //std::cerr << typeid(mat).name() << std::endl;
     
@@ -184,6 +207,7 @@ ExtMove getBestMove(const Position& pos, bool testMode = false){
     return ExtMove(bestMove, score);
 }
 
+//const std::vector<int> searchWidth = {1, 2, 3, 5, 9};
 const std::vector<int> searchWidth = {1, 2, 4, 8};
 
 std::pair<std::vector<Move>, s32> searchMove(Position& pos, s32 alpha, s32 beta, int depth) {
