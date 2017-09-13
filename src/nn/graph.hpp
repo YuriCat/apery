@@ -77,7 +77,7 @@ std::vector<tensorflow::Tensor> forward(tensorflow::Session *const psession,
     std::vector<std::pair<std::string, tensorflow::Tensor>> input = {{"g/input", inputTensor}, {"g/is_training", phaseTensor}};
     
     auto session_run_status = psession->Run(input, {"g/normalize/concat"}, {}, &otensors);
-    std::cerr << session_run_status << std::endl;
+    //std::cerr << session_run_status << std::endl;
     return otensors;
 }
 

@@ -49,8 +49,7 @@
 //#include "nn/datagen.hpp"
 #endif
 
-#define PICOJSON_USE_INT64
-#include "picojson.h"
+#include "json.h"
 
 #ifdef _WIN32
 
@@ -158,55 +157,22 @@ void NNServer(){
     dup2(csocket, STDOUT_FILENO);
     
     // データ待ち開始
-    while (1)
+    std::string str;
+    while (std::getline(std::cin, str))
     {
         // 受信
-        std::vector<std::tuple<int64_t, std::string, float>> ans;
-        std::string str;
-        while (std::getline(std::cin, str)){
-            std::cerr << ">> " << str << std::endl;
+        std::vector<std::tuple<uint64_t, std::string, float>> ans;
+        std::cerr << ">> " << str << std::endl;
+        
+        {
+            nlohmann::json json = nlohmann::json::parse(str);
             
-            const char* json = str.c_str();
-            picojson::value v;
-            std::string jerr = "";
-            picojson::parse(v, json, json + strlen(json), &jerr);
+            auto& request = json["request"];
             
-            if (jerr.empty())
-            {
-                std::cerr << "ok json" << std::endl;
-                picojson::object& o = v.get<picojson::object>();
-                if (!o["request"].is<picojson::null>())
-                {
-                    picojson::array& request = o["request"].get<picojson::array>();
-                    if (request.size() > 0)
-                    {
-                        for (auto& rv : request)
-                        {
-                            picojson::object& ro = rv.get<picojson::object>();
-                            uint64_t key;
-                            std::string sfen;
-#define JGet(o, s, t, X) if(!((o)[(s)].is<picojson::null>())){ t v = (o)[(s)].get<t>(); X; }
-                            JGet(ro, "key", std::int64_t, key = v);
-                            JGet(ro, "sfen", std::string, sfen = v);
-#undef JGet
-                            ans.push_back(std::make_tuple(key, sfen, 0.0f));
-                            std::cerr << key << " " << sfen << std::endl;
-                        }
-                    }
-                    else
-                    {
-                        std::cerr << "num of requests 0" << std::endl;
-                    }
-                }
-                else
-                {
-                    std::cerr << "no request value" << std::endl;
-                }
-                break;
-            }
-            else
-            {
-                std::cerr << "bad json" << std::endl;
+            for(auto& r : request){
+                uint64_t key = r[0];
+                std::string sfen = r[1];
+                ans.push_back(std::make_tuple(key, sfen, 0.0f));
             }
         }
         
@@ -224,18 +190,18 @@ void NNServer(){
         }
         
         // 送信
-        picojson::array a;
-        for (auto& pos : ans)
         {
-            picojson::object o;
-            o["key"] = picojson::value(std::get<0>(pos));
-            o["eval"] = picojson::value(float(std::get<2>(pos)));
-            a.push_back(picojson::value(o));
+            nlohmann::json json;
+            json["answer"] = {};
+            for (auto& pos : ans)
+            {
+                json["answer"].push_back({std::get<0>(pos), float(std::get<2>(pos))});
+            }
+            
+            std::string ostr = json.dump();
+            std::cerr << "<< " << ostr << std::endl;
+            std::cout << ostr << std::endl;
         }
-        picojson::object o;
-        o["answer"] = picojson::value(a);
-        
-        std::cout << picojson::value(o).serialize() << std::endl;
     }
 }
 
