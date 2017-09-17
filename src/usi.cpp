@@ -75,9 +75,8 @@ typedef int SOCKET;
 
 #endif // _WIN32
 
-#ifndef NO_TF
 void NNServer(){
-
+#ifndef NO_TF
     // Tensorflowのセッション開始と計算グラフ読み込み
     if (psession0 == nullptr) initializeGraph(&psession0, "./pv_graph.pb");
     
@@ -202,8 +201,8 @@ void NNServer(){
             std::cout << ostr << std::endl;
         }
     }
-}
 #endif
+}
 
 #ifdef LEARN
 
