@@ -1623,6 +1623,8 @@ getMoveValuesBySearch(const std::string& teacherFileName, const int batchSize){
 
 PYBIND11_PLUGIN(nndata) {
     py::module m("nndata", "data ganerator for neural network");
+    m.def("get_inputs_moves_values", &getInputsFromSfen,
+          "A function which returns inputs by sfen positions");
     m.def("get_inputs_moves_values", &getInputsMovesValues,
           "A function which returns inputs, moves and values");
     //m.def("gen_inputs_moves_values_results", &gen_inputs_moves_values_results,
