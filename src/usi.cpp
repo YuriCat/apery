@@ -1468,6 +1468,7 @@ int mptd_main(Searcher *const psearcher, int argc, char *argv[]){
 
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 
