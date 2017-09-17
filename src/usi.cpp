@@ -1493,8 +1493,11 @@ void openNNServer(){
     
 }
 
-void getInputsFromSfen(const std::vector<std::string>& sfens, const int batchSize,
-                       py::array_t<float>& inputs){
+py::array_t<float>
+getInputsFromSfen(const std::vector<std::string>& sfens){
+    const int batchSize = sfens.size();
+    const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
+    py::array_t<float> inputs(inputShape);
 	for(int i = 0; i < batchSize; ++i){
 		const std::string& sfen = sfens[i];
 		Position pos;
@@ -1504,7 +1507,8 @@ void getInputsFromSfen(const std::vector<std::string>& sfens, const int batchSiz
 		const Color myColor = pos.turn();
         positionToImage(pos, myColor, image); // inputデータ作成
         imageToInput(image, inputs.mutable_data() + ImageFileNum * ImageRankNum * ImageInputPlains * i);
-	}
+    }
+    return inputs;
 }
 
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
