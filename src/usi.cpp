@@ -1494,6 +1494,19 @@ void openNNServer(){
     
 }
 
+void getInputsFromSfen(py::array_t<float> sfens, const int batchSize, py::array_t<float>& inputs){
+	for(int i = 0; i < batchSize; ++i){
+		const std::string& sfen = sfens[i];
+		Position pos;
+		pos.set(sfen, nullptr);
+		const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
+		BoardImage image;
+		const Color myColor = pos.turn();
+        positionToImage(pos, myColor, image); // inputデータ作成
+        imageToInput(image, inputs.mutable_data() + ImageFileNum * ImageRankNum * ImageInputPlains * i);
+	}
+}
+
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
     PackageInitializer _packageInitializer;
