@@ -75,13 +75,11 @@ typedef int SOCKET;
 
 #endif // _WIN32
 
-
-void NNServer(){
-    
 #ifndef NO_TF
+void NNServer(){
+
     // Tensorflowのセッション開始と計算グラフ読み込み
     if (psession0 == nullptr) initializeGraph(&psession0, "./pv_graph.pb");
-#endif
     
     // TCP-IP接続準備
     unsigned short port = 7626;
@@ -205,6 +203,7 @@ void NNServer(){
         }
     }
 }
+#endif
 
 #ifdef LEARN
 
@@ -1489,7 +1488,7 @@ struct PackageInitializer{
 
 void openNNServer(){
     // ニューラルネットのサーバーを立てる
-    string host = "127.0.0.1";
+    std::string host = "127.0.0.1";
     unsigned short port = 7626;
     
     
