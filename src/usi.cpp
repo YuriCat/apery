@@ -61,6 +61,7 @@ typedef int socklen_t;
 
 #else
 
+#include <unistd.h>
 #include <sys/fcntl.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -1494,7 +1495,8 @@ void openNNServer(){
     
 }
 
-void getInputsFromSfen(py::array_t<float> sfens, const int batchSize, py::array_t<float>& inputs){
+void getInputsFromSfen(const std::vector<std::string>& sfens, const int batchSize,
+                       py::array_t<float>& inputs){
 	for(int i = 0; i < batchSize; ++i){
 		const std::string& sfen = sfens[i];
 		Position pos;
