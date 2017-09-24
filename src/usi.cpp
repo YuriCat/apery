@@ -1474,26 +1474,6 @@ namespace py = pybind11;
 
 std::mt19937 mt;
 
-struct PackageInitializer{
-    PackageInitializer(){
-        initTable();
-        Position::initZobrist();
-        HuffmanCodedPos::init();
-        std::random_device seed;
-        mt.seed(seed() ^ (unsigned int)time(NULL));
-    }
-};
-
-//PackageInitializer _packageInitializer;
-
-void openNNServer(){
-    // ニューラルネットのサーバーを立てる
-    std::string host = "127.0.0.1";
-    unsigned short port = 7626;
-    
-    
-}
-
 py::array_t<float>
 getInputsFromSfen(const std::vector<std::string>& sfens){
     const int batchSize = sfens.size();
@@ -1514,7 +1494,6 @@ getInputsFromSfen(const std::vector<std::string>& sfens){
 
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
-    PackageInitializer _packageInitializer;
     // (局面, 着手, 評価値)が記録されたApery形式から受け取る
     const std::vector<int> inputShape = {batchSize, ImageFileNum, ImageRankNum, ImageInputPlains};
     const std::vector<int> moveShape = {batchSize, ImageSupervisedOutputs};
@@ -1626,15 +1605,20 @@ getMoveValuesBySearch(const std::string& teacherFileName, const int batchSize){
 }*/
 
 
-PYBIND11_PLUGIN(nndata) {
-    py::module m("nndata", "data ganerator for neural network");
+PYBIND11_MODULE(nndata, m) {
+	initTable();
+	Position::initZobrist();
+	HuffmanCodedPos::init();
+	std::random_device seed;
+	mt.seed(seed() ^ (unsigned int)time(NULL));
+	
+    m.doc() = "data ganerator for neural network";
     m.def("get_inputs_from_sfen", &getInputsFromSfen,
           "A function which returns inputs by sfen positions");
     m.def("get_inputs_moves_values", &getInputsMovesValues,
           "A function which returns inputs, moves and values");
     //m.def("gen_inputs_moves_values_results", &gen_inputs_moves_values_results,
     //      "A function which returns inputs, moves, values and results");
-    return m.ptr();
 }
 
 #endif

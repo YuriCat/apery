@@ -1,6 +1,6 @@
 COMPILER = clang++
 #COMPILER = mpicxx
-CFLAGS   = -std=c++14 -fno-exceptions -Wextra -Ofast -MMD -MP -g -fexceptions -Wno-unused-parameter #-fno-rtti
+CFLAGS   = -std=c++1y -fno-exceptions -Wextra -Ofast -MMD -MP -g -fexceptions -Wno-unused-parameter #-fno-rtti
 CFLAGS   += -march=native # make publish の時はここをコメントアウトする必要がある。
 LDFLAGS  = -lpthread -lz -ltensorflow_cc#-lboost_mpi -lboost_serialization
 LIBS     =
