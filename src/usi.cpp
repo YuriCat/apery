@@ -49,6 +49,7 @@
 //#include "nn/datagen.hpp"
 #endif
 
+#include "unistd.h"
 #include "json.h"
 
 #ifdef _WIN32
@@ -74,136 +75,135 @@ typedef int SOCKET;
 
 #endif // _WIN32
 
-
 void NNServer(){
-    
 #ifndef NO_TF
-    // Tensorflowのセッション開始と計算グラフ読み込み
-    if (psession0 == nullptr) initializeGraph(&psession0, "./pv_graph.pb");
-#endif
-    
-    // TCP-IP接続準備
-    unsigned short port = 7626;
-    
-    // サーバー側
-    SOCKET mySocket;
-    struct sockaddr_in myAddr;
-    fd_set fds, readfds;
-    
-    // クライアント側
-    SOCKET csocket;
-    struct sockaddr_in caddr;
-    
-    socklen_t addr_size = sizeof(struct sockaddr_in);
-    
-    memset(&myAddr, 0, sizeof(struct sockaddr_in));
-    memset(&caddr, 0, sizeof(struct sockaddr_in));
-    
-    struct timeval timeout;
-    
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
-    
+	// Tensorflowのセッション開始と計算グラフ読み込み
+	if (psession0 == nullptr) initializeGraph(&psession0, "./pv_graph.pb");
+	
+	// TCP-IP接続準備
+	unsigned short port = 7626;
+	
+	// サーバー側
+	SOCKET mySocket;
+	struct sockaddr_in myAddr;
+	fd_set fds, readfds;
+	
+	// クライアント側
+	SOCKET csocket;
+	struct sockaddr_in caddr;
+	
+	socklen_t addr_size = sizeof(struct sockaddr_in);
+	
+	memset(&myAddr, 0, sizeof(struct sockaddr_in));
+	memset(&caddr, 0, sizeof(struct sockaddr_in));
+	
+	struct timeval timeout;
+	
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	
 #ifdef _WIN32
-    // Windows 独自の設定
-    WSADATA data;
-    if(SOCKET_ERROR == WSAStartup(MAKEWORD(2, 0), &data)){
-        cerr << "failed to initialize WSA-data." << std::endl;
-        exit(1);
-    }
+	// Windows 独自の設定
+	WSADATA data;
+	if(SOCKET_ERROR == WSAStartup(MAKEWORD(2, 0), &data)){
+		cerr << "failed to initialize WSA-data." << std::endl;
+		exit(1);
+	}
 #endif // _WIN32
-    
-    // ソケットの生成
-    mySocket = ::socket(AF_INET, SOCK_STREAM, 0);
-    if(mySocket < 0){
-        std::cerr << "failed to open server socket." << std::endl;
-        exit(1);
-    }
-    
-    // sockaddr_in 構造体のセット
-    memset(&myAddr, 0, sizeof(struct sockaddr_in));
-    myAddr.sin_port = htons(port);
-    myAddr.sin_family = AF_INET;
-    myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
-    
-    int i = 1, j = sizeof(i);
-    setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR, (char *)&i, j);
-    
-    // ソケットのバインド
-    i = bind(mySocket, (struct sockaddr *) &myAddr, sizeof(myAddr));
-    
-    // 接続の許可
-    i = listen(mySocket, 1);
-    
-    csocket = ::accept(mySocket, (struct sockaddr *) &caddr, &addr_size);
-    if(csocket < 0){
-        std::cerr << "failed to open client socket." << std::endl;
-        exit(1);
-    }
-    
-    // fd_setの初期化
-    FD_ZERO(&readfds);
-    
-    // selectで待つ読み込みソケットとしてmyScoketを登録
-    FD_SET(csocket, &readfds);
-    
-    // 読み込み用fd_setの初期化
-    memcpy(&fds, &readfds, sizeof(fd_set));
-    
-    // fdsに設定されたソケットが読み込み可能になるまで待つ
-    select(50, &fds, nullptr, nullptr, &timeout);
-    
-    dup2(csocket, STDIN_FILENO);
-    dup2(csocket, STDOUT_FILENO);
-    
-    // データ待ち開始
-    std::string str;
-    while (std::getline(std::cin, str))
-    {
-        // 受信
-        std::vector<std::tuple<uint64_t, std::string, float>> ans;
-        std::cerr << ">> " << str << std::endl;
-        
-        {
-            nlohmann::json json = nlohmann::json::parse(str);
-            
-            auto& request = json["request"];
-            
-            for(auto& r : request){
-                uint64_t key = r[0];
-                std::string sfen = r[1];
-                ans.push_back(std::make_tuple(key, sfen, 0.0f));
-            }
-        }
-        
-        // NN計算
-        size_t batchSize = 4;
-        std::vector<Position> p(batchSize);
-        for (int i = 0; i < (int)ans.size(); i += batchSize)
-        {
-            int n = std::min(batchSize, ans.size() - i);
-            for (int j = 0; j < n; ++j)
-                p[j].set(std::get<1>(ans[i + j]), nullptr);
-            auto v = getValue(p.data(), n);
-            for (int j = 0; j < n; ++j)
-                std::get<2>(ans[i + j]) = v[j];
-        }
-        
-        // 送信
-        {
-            nlohmann::json json;
-            json["answer"] = {};
-            for (auto& pos : ans)
-            {
-                json["answer"].push_back({std::get<0>(pos), float(std::get<2>(pos))});
-            }
-            
-            std::string ostr = json.dump();
-            std::cerr << "<< " << ostr << std::endl;
-            std::cout << ostr << std::endl;
-        }
-    }
+	
+	// ソケットの生成
+	mySocket = ::socket(AF_INET, SOCK_STREAM, 0);
+	if(mySocket < 0){
+		std::cerr << "failed to open server socket." << std::endl;
+		exit(1);
+	}
+	
+	// sockaddr_in 構造体のセット
+	memset(&myAddr, 0, sizeof(struct sockaddr_in));
+	myAddr.sin_port = htons(port);
+	myAddr.sin_family = AF_INET;
+	myAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	
+	int i = 1, j = sizeof(i);
+	setsockopt(mySocket, SOL_SOCKET, SO_REUSEADDR, (char *)&i, j);
+	
+	// ソケットのバインド
+	i = bind(mySocket, (struct sockaddr *) &myAddr, sizeof(myAddr));
+	
+	// 接続の許可
+	i = listen(mySocket, 1);
+	
+	csocket = ::accept(mySocket, (struct sockaddr *) &caddr, &addr_size);
+	if(csocket < 0){
+		std::cerr << "failed to open client socket." << std::endl;
+		exit(1);
+	}
+	
+	// fd_setの初期化
+	FD_ZERO(&readfds);
+	
+	// selectで待つ読み込みソケットとしてmyScoketを登録
+	FD_SET(csocket, &readfds);
+	
+	// 読み込み用fd_setの初期化
+	memcpy(&fds, &readfds, sizeof(fd_set));
+	
+	// fdsに設定されたソケットが読み込み可能になるまで待つ
+	select(50, &fds, nullptr, nullptr, &timeout);
+	
+	dup2(csocket, STDIN_FILENO);
+	dup2(csocket, STDOUT_FILENO);
+	
+	// データ待ち開始
+	std::string str;
+	while (std::getline(std::cin, str))
+	{
+		// 受信
+		std::vector<std::tuple<uint64_t, std::string, float>> ans;
+		std::cerr << ">> " << str << std::endl;
+		
+		{
+			nlohmann::json json = nlohmann::json::parse(str);
+			
+			auto& request = json["request"];
+			
+			for(auto& r : request){
+				uint64_t key = r[0];
+				std::string sfen = r[1];
+				ans.push_back(std::make_tuple(key, sfen, 0.0f));
+			}
+		}
+		
+		// NN計算
+		size_t batchSize = 4;
+		std::vector<Position> p(batchSize);
+		for (int i = 0; i < (int)ans.size(); i += batchSize)
+		{
+			int n = std::min(batchSize, ans.size() - i);
+			for (int j = 0; j < n; ++j)
+			p[j].set(std::get<1>(ans[i + j]), nullptr);
+			auto v = getValue(p.data(), n);
+			for (int j = 0; j < n; ++j)
+			std::get<2>(ans[i + j]) = v[j];
+		}
+		
+		// 送信
+		{
+			nlohmann::json json;
+			json["answer"] = {};
+			for (auto& pos : ans)
+			{
+				json["answer"].push_back({std::get<0>(pos), float(std::get<2>(pos))});
+			}
+			
+			std::string ostr = json.dump();
+			std::cerr << "<< " << ostr << std::endl;
+			std::cout << ostr << std::endl;
+		}
+	}
+#endif
 }
+
 
 #ifdef LEARN
 
@@ -1486,14 +1486,6 @@ struct PackageInitializer{
 
 //PackageInitializer _packageInitializer;
 
-void openNNServer(){
-    // ニューラルネットのサーバーを立てる
-    string host = "127.0.0.1";
-    unsigned short port = 7626;
-    
-    
-}
-
 std::tuple<py::array_t<float>, py::array_t<s64>, py::array_t<float>>
 getInputsMovesValues(const std::string& teacherFileName, const int batchSize){
     PackageInitializer _packageInitializer;
@@ -1614,6 +1606,8 @@ PYBIND11_PLUGIN(nndata) {
           "A function which returns inputs, moves and values");
     //m.def("gen_inputs_moves_values_results", &gen_inputs_moves_values_results,
     //      "A function which returns inputs, moves, values and results");
+//    m.def("get_inputs_moves_values", &getInputsFromSfen,
+//          "A function which returns inputs, moves and values");
     return m.ptr();
 }
 
